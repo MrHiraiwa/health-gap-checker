@@ -260,7 +260,6 @@
       align-items: center;
       gap: 6px;
     }
-    /* カロリー表示のレスポンシブ対応 */
     .calorie-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -283,7 +282,6 @@
       font-size: 0.75rem;
       color: #713f12;
     }
-    /* スマホ（幅560px以下）のときは減量カロリーを1段目、維持と基礎代謝を2段目に配置 */
     @media (max-width: 560px) {
       .calorie-grid {
         grid-template-columns: 1fr 1fr;
@@ -478,6 +476,18 @@
         font-size: 0.65rem !important;
         line-height: 1.2 !important;
       }
+      
+      /* 📌 「ギャップ詳細」の見出しの前で確実に改ページする */
+      #analysis-section h3 {
+        page-break-before: always !important;
+        break-before: page !important;
+        font-size: 0.88rem !important;
+        margin-top: 0 !important;
+        margin-bottom: 6px !important;
+        padding-top: 4px;
+      }
+
+      /* 項目別リストを2列グリッドにして2ページ目に綺麗に収める */
       #analysis-items {
         display: grid !important;
         grid-template-columns: 1fr 1fr !important;
@@ -509,11 +519,6 @@
         padding: 3px 6px !important;
         margin-top: 2px !important;
         line-height: 1.25 !important;
-      }
-      h3 {
-        font-size: 0.88rem !important;
-        margin-top: 6px !important;
-        margin-bottom: 4px !important;
       }
     }
   </style>
@@ -1114,7 +1119,7 @@ function runAnalysis() {
       });
     }
 
-    // 5. 脂질 (LDL & 中性脂肪)
+    // 5. 脂質 (LDL & 中性脂肪)
     if (ldl) {
       const diff = ldl - 119;
       items.push({
