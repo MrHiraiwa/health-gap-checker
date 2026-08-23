@@ -372,7 +372,7 @@
       gap: 6px;
     }
     .roadmap-highlight {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: bold;
       color: #15803d;
     }
@@ -1152,7 +1152,7 @@ function runAnalysis() {
       calCard.innerHTML = `
         <div class="calorie-title">🎒 成長期・発育のための推奨エネルギー必要量</div>
         <div style="font-size: 0.88rem; color: #713f12;">
-          成長期のお子様には<strong>カロリー制限（ダイエット）は行いません</strong>。発育と運動に必要な適正エネルギーです。
+          成長期のお子様には<strong>無理なカロリー制限は行いません</strong>。発育と運動に必要な適正エネルギーです。
         </div>
         <div class="calorie-grid">
           <div class="calorie-box" style="grid-column: 1 / -1; background: #fffbeb; border: 1.5px solid #fde047;">
@@ -1198,18 +1198,49 @@ function runAnalysis() {
       else if (lauter >= 160 && lauter < 190) { 判定 = '軽度太め (適度な運動・外遊びを推奨)'; badgeCls = 'gap-warning'; badgeTxt = 'やや太め'; }
       else if (lauter >= 190) { 判定 = '肥満傾向 (生活習慣や食生活の見直しを推奨)'; badgeCls = 'gap-alert'; badgeTxt = '要生活改善'; }
 
+      // 具体的ロードマップの計算
       const neededHeightForCurrentWeight = Math.cbrt((w * 10000000) / targetLauterVal).toFixed(1);
-      const heightGrowthNeeded = (neededHeightForCurrentWeight - h).toFixed(1);
+      const heightGrowthNeeded = parseFloat((neededHeightForCurrentWeight - h).toFixed(1));
 
-      if (heightGrowthNeeded > 0) {
+      if (lauter >= 160) {
+        // 基準値超過（太り気味・肥満傾向）の具体的ロードマップ
+        const annualGrowth = 5.5; // 学童の年間平均身長伸び (約5.5cm)
+        const expectedNextYearH = (h + annualGrowth);
+        const expectedNextYearTargetW = parseFloat(((targetLauterVal * Math.pow(expectedNextYearH, 3)) / 10000000).toFixed(1));
+        
+        let planHtml = '';
+        if (lauter >= 190) {
+          planHtml = `
+            <div class="roadmap-title">📅 成長期・具体的発育ロードマップ（ステップ改善）</div>
+            <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
+              現在の身長（${h}cm）における適正体重目安は <strong style="color:#15803d;">${targetLaurerW} kg</strong> です（現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg 超過</span>）。<br>
+              成長期は急な減量は行わず、以下の<strong>【2段階ステップ】</strong>で無理なく適正化を目指します✨
+            </div>
+            <div style="background:#ffffff; border:1px solid #bbf7d0; border-radius:8px; padding:8px 12px; margin-top:8px; font-size:0.82rem; color:#166534;">
+              <strong>🎯 ステップ1 (直近の目標):</strong><br>
+              まずは「体重の急増をストップ」させ、ふくよか許容上限（145基準：${parseFloat(((145 * Math.pow(h, 3)) / 10000000).toFixed(1))}kg）を目指してジュースをお茶に変え、間食の時間を決めることからスタート！<br><br>
+              <strong>🌱 ステップ2 (1年後の成長目安):</strong><br>
+              1年後に身長が約+${annualGrowth}cm伸びて <strong>${expectedNextYearH.toFixed(1)} cm</strong> になった場合、体重を現在付近（約${expectedNextYearTargetW}kg）にキープできていれば自然と適正バランスに到達します。
+            </div>
+          `;
+        } else {
+          planHtml = `
+            <div class="roadmap-title">📅 成長期・発育ロードマップ（身長の伸びと体重キープ）</div>
+            <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
+              現在の身長（${h}cm）の適正体重目安は <strong style="color:#15803d;">${targetLaurerW} kg</strong> です（現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg 超過</span>）。<br>
+              体重を大きく減らす必要はありません。<strong>現在の体重をキープしながら、1年間の成長（身長 +約${annualGrowth}cm）を待つ</strong>ことで、1年後（身長 ${expectedNextYearH.toFixed(1)}cm / 適正目安 ${expectedNextYearTargetW}kg）には無理なく標準域（130）へ近づきます✨
+            </div>
+          `;
+        }
+        roadmapCard.innerHTML = planHtml;
+        roadmapCard.style.display = 'block';
+      } else if (heightGrowthNeeded > 0 && heightGrowthNeeded <= 10.0) {
+        // 軽微な差分（あと数cmの伸びで達成）
         roadmapCard.innerHTML = `
-          <div class="roadmap-title">📅 成長期・発育ロードマップ（身長の伸びによる適正化）</div>
-          <div style="font-size: 0.9rem; color: #14532d; line-height: 1.6;">
-            現在の体重（${w}kg）を維持したまま、身長が <span class="roadmap-highlight">あと約 +${heightGrowthNeeded} cm（身長 ${neededHeightForCurrentWeight} cm）</span> 伸びると、
+          <div class="roadmap-title">📅 成長期・発育ロードマップ（自然な適正化）</div>
+          <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
+            現在の体重（${w}kg）をキープしたまま、身長が <span class="roadmap-highlight">あと約 +${heightGrowthNeeded} cm（身長 ${neededHeightForCurrentWeight} cm）</span> 伸びると、
             自然に<strong>【${targetLauterName}】</strong>のバランスに到達します✨
-          </div>
-          <div style="font-size: 0.78rem; color: #166534; margin-top: 6px; background: #ffffff; padding: 6px 10px; border-radius: 6px; border: 1px solid #bbf7d0;">
-            💡 <strong>成長期の基本方針:</strong> 体重を落とすのではなく、食事の栄養バランスと外遊び・運動習慣を整えて「背が伸びるのを待つ」のが最も安全で健やかな成長アプローチです。
           </div>
         `;
         roadmapCard.style.display = 'block';
@@ -1234,7 +1265,7 @@ function runAnalysis() {
         <div style="font-size: 0.85rem; color: #9d174d; margin-bottom: 6px;">${laurerDiffText}</div>
       `;
 
-      rawLines.push(`・ローレル指数: ${lauter.toFixed(1)} (${判定}) ｜ 実測: ${h}cm / ${w}kg ｜ 目標: ${targetLauterName}`);
+      rawLines.push(`・ローレル指数: ${lauter.toFixed(1)} (${判定}) ｜ 実測: ${h}cm / ${w}kg ｜ 目標: ${targetLauterName} (目安: ${targetLaurerW}kg)`);
       maskedLines.push(`・ローレル指数判定: 【${判定}】 ｜ 目標: ${targetLauterName}`);
 
       items.push({
@@ -1242,7 +1273,7 @@ function runAnalysis() {
         compare: `実測: <strong>${lauter.toFixed(1)}</strong> (体重:${w}kg) ｜ 目標: <strong>${targetLauterVal}</strong> (目安:${targetLaurerW}kg)`,
         badge: badgeCls,
         badgeText: badgeTxt,
-        tip: '成長期はしっかり食べて元気に体を動かすことが一番の健康です🏀'
+        tip: laurer >= 160 ? 'ジュースをお茶に変え、夜遅い間食を控えて元気に外遊びしましょう🏀' : '成長期はしっかり食べて元気に体を動かすことが一番の健康です✨'
       });
     }
 
@@ -1280,7 +1311,7 @@ function runAnalysis() {
 
     const us = document.getElementById('urine_sugar').value;
     rawLines.push(`・尿糖: ${us === '-' ? '陰性 (-)' : '陽性 (+)'}`);
-    maskedLines.push(`・尿糖: ${us === '-' ? '陰性 正常 🎯' : '陽性 要受診'}`);
+    maskedLines.push(`・尿糖: ${us === '-' ? '陰性 正常 🎯' : '陽性 (+) 要受診'}`);
     items.push({
       name: '学校検尿: 尿糖',
       compare: `検査結果: <strong>${us}</strong> ｜ 推奨: <strong>（-）陰性</strong>`,
