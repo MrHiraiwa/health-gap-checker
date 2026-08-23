@@ -876,7 +876,10 @@
 
   <footer class="app-footer">
     <div>🔒 <strong>プライバシー保証:</strong> 入力データは端末内でのみ処理・保存され、外部サーバー送信は一切ありません。</div>
-    <div style="margin-top: 4px;">
+    <div style="margin-top: 6px;">
+      📖 <a href="https://note.com/modern_echium586/n/naffbfe94b8c6" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: bold; text-decoration: underline;">判定基準・医学的根拠の詳しい解説（note記事）はこちら</a>
+    </div>
+    <div style="margin-top: 6px;">
       Released under the <strong>MIT License</strong> &copy; 2026 <strong>Mrhiraiwa</strong>
     </div>
   </footer>
@@ -1097,7 +1100,6 @@ function runAnalysis() {
   const roadmapCard = document.getElementById('roadmap-result-card');
   const dietCard = document.getElementById('diet-result-card');
 
-  // 水分補給目安 (体重×約35ml、下限2000ml〜上限3000ml)
   let waterTarget = w ? Math.min(3000, Math.max(2000, Math.round(w * 35))) : 2000;
 
   // 🎒 未成年・学校健診モード
@@ -1267,7 +1269,6 @@ function runAnalysis() {
       dietCal = Math.max(currentBmr, Math.round(dietCal));
       dailyDeficit = Math.max(100, currentTdee - dietCal);
 
-      // PFCバランス計算 (P: 体重×1.0g [4kcal/g], F: 22.5% [9kcal/g], C: 残り [4kcal/g])
       let pGrams = Math.round(w * 1.0);
       let pCal = pGrams * 4;
       let fCal = Math.round(dietCal * 0.225);
