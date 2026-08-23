@@ -1100,7 +1100,10 @@ function runAnalysis() {
   const roadmapCard = document.getElementById('roadmap-result-card');
   const dietCard = document.getElementById('diet-result-card');
 
-  let waterTarget = w ? Math.min(3000, Math.max(2000, Math.round(w * 35))) : 2000;
+  // 総水分目安(体重×35ml) と 飲み物単体目標(総水分-1000ml)
+  let totalWater = w ? Math.round(w * 35) : 2500;
+  let drinkWaterMin = w ? Math.max(1200, Math.round(w * 22)) : 1500;
+  let drinkWaterMax = w ? Math.min(3000, Math.round(w * 30)) : 2000;
 
   // 🎒 未成年・学校健診モード
   if (currentMode === 'school') {
@@ -1122,11 +1125,11 @@ function runAnalysis() {
           </div>
         </div>
         <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px;">
-          💧 <strong>1日の水分補給目安:</strong> 約 <strong>${waterTarget} ml</strong>（こまめな水分補給を習慣にしましょう）
+          🥤 <strong>飲み物としての補給目標:</strong> 約 <strong>${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L / 日</strong> ｜ <span style="color:#64748b;">🍚 食事込みの総水分目安: 約 ${(totalWater/1000).toFixed(1)} L</span>
         </div>
       `;
       summaryLines.push(`・成長期推奨カロリー: ${recCalChild} kcal/日`);
-      summaryLines.push(`・推奨水分目安: 約 ${waterTarget} ml/日`);
+      summaryLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日 (食事込み総量: 約 ${(totalWater/1000).toFixed(1)} L)`);
     }
 
     if (h && w) {
@@ -1302,15 +1305,15 @@ function runAnalysis() {
           <div class="pfc-item">🍚 炭水化物 (C): <strong>${cGrams} g</strong> (${cCal}kcal)</div>
         </div>
 
-        <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px; display:flex; justify-content:space-between; flex-wrap:wrap;">
-          <span>💧 <strong>推奨水分目安:</strong> 約 <strong>${waterTarget} ml / 日</strong></span>
-          <span>⚖️ <strong>アンダーカロリー:</strong> 1日あたり約 <strong>-${dailyDeficit} kcal</strong></span>
+        <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+          <span>🥤 <strong>飲み物の補給目標:</strong> 約 <strong>${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L / 日</strong> <span style="color:#64748b;">(食事込総量:約 ${(totalWater/1000).toFixed(1)}L)</span></span>
+          <span style="color:#854d0e;">⚖️ <strong>アンダーカロリー:</strong> 約 <strong>-${dailyDeficit} kcal/日</strong></span>
         </div>
       `;
 
       summaryLines.push(`・減量推奨カロリー: ${dietCal} kcal/日 (維持: ${targetTdee} kcal, 基礎代謝: ${currentBmr} kcal)`);
       summaryLines.push(`・PFCバランス目安: P ${pGrams}g / F ${fGrams}g / C ${cGrams}g`);
-      summaryLines.push(`・推奨水分目安: 約 ${waterTarget} ml/日`);
+      summaryLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日 (食事込み総水分: 約 ${(totalWater/1000).toFixed(1)} L)`);
 
     } else if (h && w && age && currentMode === 'simple') {
       let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
@@ -1334,10 +1337,10 @@ function runAnalysis() {
           </div>
         </div>
         <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px;">
-          💧 <strong>推奨水分目安:</strong> 約 <strong>${waterTarget} ml / 日</strong>
+          🥤 <strong>飲み物の補給目標:</strong> 約 <strong>${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L / 日</strong> <span style="color:#64748b;">(食事込総量:約 ${(totalWater/1000).toFixed(1)}L)</span>
         </div>
       `;
-      summaryLines.push(`・減量推奨カロリー: ${dietCal} kcal/日 ｜ 推奨水分: 約 ${waterTarget} ml/日`);
+      summaryLines.push(`・減量推奨カロリー: ${dietCal} kcal/日 ｜ 水分補給目標(飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
     }
 
     if (h && w && targetW && currentMode === 'adult') {
