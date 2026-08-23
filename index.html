@@ -921,7 +921,6 @@ function switchMode(mode, save = true) {
   const adultWeightGoal = document.getElementById('weight-goal-wrapper');
   const laurerGoal = document.getElementById('laurer-goal-wrapper');
 
-  // 活動量オプションの切り替え
   renderActivityOptions(mode);
 
   if (mode === 'school') {
@@ -1056,7 +1055,7 @@ function runAnalysis() {
   if (currentMode === 'school') {
     calCard.style.display = 'block';
 
-    // 成長期の推奨エネルギー量（厚労省 食事摂取基準ベースの安全設計）
+    // 成長期の推奨エネルギー量
     if (h && w && age) {
       let bmrChild = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
       let recCalChild = Math.round(bmrChild * act);
@@ -1099,7 +1098,7 @@ function runAnalysis() {
       else if (lauter >= 160 && lauter < 190) { 判定 = '軽度太め (適度な運動・外遊びを推奨)'; badgeCls = 'gap-warning'; badgeTxt = 'やや太め'; }
       else if (lauter >= 190) { 判定 = '肥満傾向 (生活習慣や食生活の見直しを推奨)'; badgeCls = 'gap-alert'; badgeTxt = '要生活改善'; }
 
-      // 成長ロードマップ（身長が伸びることでローレル指数が適正化する目安）
+      // 身長成長ロードマップ
       const neededHeightForCurrentWeight = Math.cbrt((w * 10000000) / targetLauterVal).toFixed(1);
       const heightGrowthNeeded = (neededHeightForCurrentWeight - h).toFixed(1);
 
@@ -1148,10 +1147,9 @@ function runAnalysis() {
       });
     }
 
+    // 視力検査
     const vr = document.getElementById('vision_r').value;
     const vl = document.getElementById('vision_l').value;
-    const up = document.getElementById('urine_protein').value;
-
     items.push({
       name: '視力検査 (右 / 左)',
       compare: `右: <strong>${vr}</strong> ｜ 左: <strong>${vl}</strong>`,
@@ -1160,8 +1158,37 @@ function runAnalysis() {
       tip: (vr !== 'A' || vl !== 'A') ? '黒板が見えにくい場合は眼科での再検査や眼鏡調整を検討してください👓' : '良好です！'
     });
 
-    if (up !== '-') {
-      prescriptions.push('💧 <strong>学校検尿で尿タンパク陽性:</strong> 激しい運動を控え、再検査（早朝尿検査）を受けましょう。');
+    // 尿タンパク検査
+    const up = document.getElementById('urine_protein').value;
+    let upBadge = 'gap-achieved';
+    let upText = '陰性 (-) 正常 🎯';
+    if (up === '+-') { upBadge = 'gap-warning'; upText = '偽陽性 (±) 要観察'; }
+    else if (up === '+' || up === '2+') { upBadge = 'gap-alert'; upText = `陽性 (${up}) 要精査`; }
+
+    items.push({
+      name: '学校検尿: 尿タンパク',
+      compare: `検査結果: <strong>${up}</strong> ｜ 推奨: <strong>（-）陰性</strong>`,
+      badge: upBadge,
+      badgeText: upText,
+      tip: up === '-' ? '異常なしです✨' : '激しい運動や発熱の影響もありますが、陽性が続く場合は医療機関で再検査（早朝尿検査）を受けましょう。'
+    });
+
+    if (up === '+' || up === '2+') {
+      prescriptions.push('💧 <strong>学校検尿で尿タンパク陽性:</strong> 激しい運動を控え、医療機関での再検査（早朝尿検査）を受けましょう。');
+    }
+
+    // 尿糖検査
+    const us = document.getElementById('urine_sugar').value;
+    items.push({
+      name: '学校検尿: 尿糖',
+      compare: `検査結果: <strong>${us}</strong> ｜ 推奨: <strong>（-）陰性</strong>`,
+      badge: us === '-' ? 'gap-achieved' : 'gap-alert',
+      badgeText: us === '-' ? '陰性 (-) 正常 🎯' : '陽性 (+) 要受診',
+      tip: us === '-' ? '異常なしです✨' : 'ジュースやお菓子の過剰摂取を控え、小児科等で詳しい検査を受けましょう。'
+    });
+
+    if (us === '+') {
+      prescriptions.push('🍚 <strong>学校検尿で尿糖陽性:</strong> ジュースやお菓子の摂りすぎに注意し、小児科での相談・検査をおすすめします。');
     }
 
   } else {
