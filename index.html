@@ -944,22 +944,37 @@ window.addEventListener('DOMContentLoaded', () => {
   try {
     const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v2') || '{}');
     const initialMode = saved._mode || 'adult';
-    renderActivityOptions(initialMode, saved.activity_level || '1.5');
     
-    fields.forEach(id => {
-      if (saved[id] !== undefined && document.getElementById(id)) document.getElementById(id).value = saved[id];
-    });
+    // 1. 先にモードUIと活動量セレクトを正しく構築
     switchMode(initialMode, false);
-    if (saved.height && saved.weight) runAnalysis();
+    
+    // 2. 各フィールドの値を復元
+    fields.forEach(id => {
+      if (saved[id] !== undefined && document.getElementById(id)) {
+        document.getElementById(id).value = saved[id];
+      }
+    });
+
+    // 3. 活動量の値を再適用
+    if (saved.activity_level) {
+      document.getElementById('activity_level').value = saved.activity_level;
+    }
+
+    // 4. 身長・体重があれば自動分析
+    const h = parseFloat(saved.height);
+    const w = parseFloat(saved.weight);
+    if (!isNaN(h) && !isNaN(w) && h > 0 && w > 0) {
+      runAnalysis();
+    }
   } catch (e) {
-    renderActivityOptions('adult', '1.5');
+    switchMode('adult', false);
   }
 });
 
 function renderActivityOptions(mode, selectedVal) {
   const select = document.getElementById('activity_level');
   const currentVal = selectedVal || select.value || '1.5';
-  select.innerHTML = mode === 'school' ? schoolActivityOptions : adultActivityOptions;
+  select.innerHTML = (mode === 'school') ? schoolActivityOptions : adultActivityOptions;
   select.value = currentVal;
 }
 
@@ -977,6 +992,7 @@ function switchMode(mode, save = true) {
   const adultWeightGoal = document.getElementById('weight-goal-wrapper');
   const laurerGoal = document.getElementById('laurer-goal-wrapper');
 
+  // 活動量セレクトをモードに合わせて確実に更新
   renderActivityOptions(mode);
 
   if (mode === 'school') {
@@ -1005,7 +1021,7 @@ function switchMode(mode, save = true) {
     autoSave();
     const h = parseFloat(document.getElementById('height').value);
     const w = parseFloat(document.getElementById('weight').value);
-    if (h && w) {
+    if (!isNaN(h) && !isNaN(w) && h > 0 && w > 0) {
       runAnalysis();
     }
   }
@@ -1044,11 +1060,15 @@ function importData(event) {
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result);
-      if (data._mode) switchMode(data._mode, false);
+      const targetMode = data._mode || 'adult';
+      switchMode(targetMode, false);
       fields.forEach(id => {
         const el = document.getElementById(id);
         if (el && data[id] !== undefined) el.value = data[id];
       });
+      if (data.activity_level) {
+        document.getElementById('activity_level').value = data.activity_level;
+      }
       autoSave();
       runAnalysis();
       alert('データを復元しました✨');
@@ -1076,9 +1096,7 @@ function clearData() {
       else el.value = '';
     });
     
-    // モードを維持して保存
-    currentMode = savedMode;
-    autoSave();
+    switchMode(savedMode, true);
     document.getElementById('analysis-section').style.display = 'none';
   }
 }
@@ -1117,16 +1135,16 @@ function printReport() {
 function runAnalysis() {
   autoSave();
 
-  const gender = document.getElementById('gender').value;
+  const gender = document.getElementById('gender').value || 'male';
   const age = parseFloat(document.getElementById('age').value);
   const act = parseFloat(document.getElementById('activity_level').value) || 1.5;
   const h = parseFloat(document.getElementById('height').value);
   const w = parseFloat(document.getElementById('weight').value);
-  const goalType = document.getElementById('weight_goal_type').value;
-  const laurerGoalType = document.getElementById('laurer_goal_type').value;
+  const goalType = document.getElementById('weight_goal_type').value || 'standard';
+  const laurerGoalType = document.getElementById('laurer_goal_type').value || 'standard';
 
-  if (!h || !w) {
-    alert('「身長」と「体重」を入力してから実行してください💡');
+  if (isNaN(h) || isNaN(w) || h <= 0 || w <= 0) {
+    alert('「身長」と「体重」を正しく入力してから実行してください💡');
     return;
   }
 
@@ -1140,22 +1158,21 @@ function runAnalysis() {
   const roadmapCard = document.getElementById('roadmap-result-card');
   const dietCard = document.getElementById('diet-result-card');
 
-  // 初期化クリア
   calCard.style.display = 'none';
   calCard.innerHTML = '';
   roadmapCard.style.display = 'none';
   roadmapCard.innerHTML = '';
   dietCard.innerHTML = '';
 
-  let totalWater = Math.round(w * 35);
-  let drinkWaterMin = Math.max(1200, Math.round(w * 22));
-  let drinkWaterMax = Math.min(3000, Math.round(w * 30));
+  const totalWater = Math.round(w * 35);
+  const drinkWaterMin = Math.max(1200, Math.round(w * 22));
+  const drinkWaterMax = Math.min(3000, Math.round(w * 30));
 
   // 🎒 未成年・学校健診モード
   if (currentMode === 'school') {
-    if (!isNaN(age)) {
-      let bmrChild = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
-      let recCalChild = Math.round(bmrChild * act);
+    if (!isNaN(age) && age > 0) {
+      const bmrChild = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
+      const recCalChild = Math.round(bmrChild * act);
 
       calCard.innerHTML = `
         <div class="calorie-title">🎒 成長期・発育のための推奨エネルギー必要量</div>
@@ -1207,7 +1224,6 @@ function runAnalysis() {
     else if (lauter >= 160 && lauter < 190) { 判定 = '軽度太め (適度な運動・外遊びを推奨)'; badgeCls = 'gap-warning'; badgeTxt = 'やや太め'; }
     else if (lauter >= 190) { 判定 = '肥満傾向 (生活習慣や食生活の見直しを推奨)'; badgeCls = 'gap-alert'; badgeTxt = '要生活改善'; }
 
-    // 具体的ロードマップの計算
     const neededHeightForCurrentWeight = Math.cbrt((w * 10000000) / targetLauterVal).toFixed(1);
     const heightGrowthNeeded = parseFloat((neededHeightForCurrentWeight - h).toFixed(1));
 
@@ -1281,8 +1297,8 @@ function runAnalysis() {
       tip: laurer >= 160 ? 'ジュースをお茶に変え、夜遅い間食を控えて元気に外遊びしましょう🏀' : '成長期はしっかり食べて元気に体を動かすことが一番の健康です✨'
     });
 
-    const vr = document.getElementById('vision_r').value;
-    const vl = document.getElementById('vision_l').value;
+    const vr = document.getElementById('vision_r').value || 'A';
+    const vl = document.getElementById('vision_l').value || 'A';
     rawLines.push(`・視力: 右 ${vr} / 左 ${vl}`);
     maskedLines.push(`・視力: 右 ${vr} / 左 ${vl}`);
     items.push({
@@ -1293,7 +1309,7 @@ function runAnalysis() {
       tip: (vr !== 'A' || vl !== 'A') ? '黒板が見えにくい場合は眼科での再検査や眼鏡調整を検討してください👓' : '良好です！'
     });
 
-    const up = document.getElementById('urine_protein').value;
+    const up = document.getElementById('urine_protein').value || '-';
     let upBadge = 'gap-achieved';
     let upText = '陰性 (-) 正常 🎯';
     if (up === '+-') { upBadge = 'gap-warning'; upText = '偽陽性 (±) 要観察'; }
@@ -1313,7 +1329,7 @@ function runAnalysis() {
       prescriptions.push('💧 <strong>学校検尿で尿タンパク陽性:</strong> 激しい運動を控え、医療機関での再検査（早朝尿検査）を受けましょう。');
     }
 
-    const us = document.getElementById('urine_sugar').value;
+    const us = document.getElementById('urine_sugar').value || '-';
     rawLines.push(`・尿糖: ${us === '-' ? '陰性 (-)' : '陽性 (+)'}`);
     maskedLines.push(`・尿糖: ${us === '-' ? '陰性 正常 🎯' : '陽性 (+) 要受診'}`);
     items.push({
@@ -1352,7 +1368,7 @@ function runAnalysis() {
     }
 
     let dailyDeficit = 350;
-    if (!isNaN(age) && targetW && currentMode === 'adult') {
+    if (!isNaN(age) && age > 0 && targetW && currentMode === 'adult') {
       let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
       let currentTdee = Math.round(currentBmr * act);
 
@@ -1411,7 +1427,7 @@ function runAnalysis() {
       maskedLines.push(`・PFCバランス目安: P ${pGrams}g / F ${fGrams}g / C ${cGrams}g`);
       maskedLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
 
-    } else if (!isNaN(age) && currentMode === 'simple') {
+    } else if (!isNaN(age) && age > 0 && currentMode === 'simple') {
       let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
       let currentTdee = Math.round(currentBmr * 1.5);
       let dietCal = Math.max(currentBmr, currentTdee - 350);
@@ -1501,8 +1517,8 @@ function runAnalysis() {
     // 血圧（成人・自宅計測共通）
     const sbp = parseFloat(document.getElementById('sbp').value);
     const dbp = parseFloat(document.getElementById('dbp').value);
-    if (sbp || dbp) {
-      const maxDiff = Math.max(sbp ? sbp - 120 : 0, dbp ? dbp - 80 : 0);
+    if (!isNaN(sbp) || !isNaN(dbp)) {
+      const maxDiff = Math.max(!isNaN(sbp) ? sbp - 120 : 0, !isNaN(dbp) ? dbp - 80 : 0);
       rawLines.push(`・血圧: ${sbp || '-'}/${dbp || '-'} mmHg (推奨 120/80未満)`);
       maskedLines.push(`・血圧判定: ${maxDiff <= 0 ? '正常血圧 🎯' : '目標超過'}`);
       items.push({
@@ -1512,7 +1528,7 @@ function runAnalysis() {
         badgeText: maxDiff <= 0 ? '正常血圧 🎯' : `目標まで +${maxDiff} mmHg`,
         tip: '減塩と有酸素運動が効果的です🧂'
       });
-      if (sbp >= 130 || dbp >= 85) {
+      if ((!isNaN(sbp) && sbp >= 130) || (!isNaN(dbp) && dbp >= 85)) {
         prescriptions.push('💓 <strong>血圧高めのダイエット注意点:</strong><br>息を止めて力む筋トレは避け、ウォーキング等の有酸素運動を中心に行いましょう。食事は減塩を徹底し、カリウム（野菜類）を意識してください。');
       }
     }
@@ -1528,7 +1544,7 @@ function runAnalysis() {
       const cre = parseFloat(document.getElementById('creatinine').value);
       const ua = parseFloat(document.getElementById('ua').value);
 
-      if (cre && !isNaN(age)) {
+      if (!isNaN(cre) && !isNaN(age) && age > 0) {
         let egfr = 194 * Math.pow(cre, -1.094) * Math.pow(age, -0.287);
         if (gender === 'female') egfr *= 0.739;
         egfr = parseFloat(egfr.toFixed(1));
@@ -1550,11 +1566,11 @@ function runAnalysis() {
       }
 
       const gtpTarget = gender === 'male' ? 50 : 30;
-      if ((alt && alt > 30) || (gtp && gtp > gtpTarget)) {
+      if ((!isNaN(alt) && alt > 30) || (!isNaN(gtp) && gtp > gtpTarget)) {
         prescriptions.push('🍺 <strong>肝機能高め（脂肪肝傾向）:</strong> 夜遅い炭水化物・アルコールを控えましょう。');
       }
-      if (alt || gtp) {
-        const isWarn = (alt && alt > 30) || (gtp && gtp > gtpTarget);
+      if (!isNaN(alt) || !isNaN(gtp)) {
+        const isWarn = (!isNaN(alt) && alt > 30) || (!isNaN(gtp) && gtp > gtpTarget);
         rawLines.push(`・肝機能: ALT ${alt || '-'} / γ-GTP ${gtp || '-'} U/L`);
         maskedLines.push(`・肝機能判定: ${!isWarn ? '正常域 🎯' : '目標超過'}`);
         items.push({
@@ -1566,10 +1582,10 @@ function runAnalysis() {
         });
       }
 
-      if (ua && ua > 6.0) {
+      if (!isNaN(ua) && ua > 6.0) {
         prescriptions.push('🦶 <strong>尿酸値高め:</strong> 急激な減量を避け、水分をしっかり摂りましょう。');
       }
-      if (ua) {
+      if (!isNaN(ua)) {
         const diff = (ua - 6.0).toFixed(1);
         rawLines.push(`・尿酸値: ${ua} mg/dL ｜ 理想目標 6.0以下`);
         maskedLines.push(`・尿酸値判定: ${ua <= 6.0 ? '理想域 🎯' : '高め'}`);
@@ -1582,7 +1598,7 @@ function runAnalysis() {
         });
       }
 
-      if (ldl) {
+      if (!isNaN(ldl)) {
         const diff = ldl - 119;
         rawLines.push(`・LDLコレステロール: ${ldl} mg/dL ｜ 推奨 119以下`);
         maskedLines.push(`・LDLコレステロール: ${diff <= 0 ? '基準内 🎯' : '高め'}`);
@@ -1594,7 +1610,7 @@ function runAnalysis() {
           tip: '食物繊維や青魚を積極的に摂りましょう🐟'
         });
       }
-      if (tg) {
+      if (!isNaN(tg)) {
         const diff = tg - 149;
         rawLines.push(`・中性脂肪: ${tg} mg/dL ｜ 推奨 149以下`);
         maskedLines.push(`・中性脂肪: ${diff <= 0 ? '基準内 🎯' : '高め'}`);
@@ -1606,11 +1622,11 @@ function runAnalysis() {
           tip: '夜遅い主食やお酒を控えめにしましょう。'
         });
       }
-      if (bs || hba1c) {
-        let isHigh = (hba1c && hba1c > 5.5) || (bs && bs > 99);
-        let desc = [];
-        if (bs) desc.push(`血糖値:${bs}`);
-        if (hba1c) desc.push(`HbA1c:${hba1c}%`);
+      if (!isNaN(bs) || !isNaN(hba1c)) {
+        const isHigh = (!isNaN(hba1c) && hba1c > 5.5) || (!isNaN(bs) && bs > 99);
+        const desc = [];
+        if (!isNaN(bs)) desc.push(`血糖値:${bs}`);
+        if (!isNaN(hba1c)) desc.push(`HbA1c:${hba1c}%`);
         rawLines.push(`・糖代謝: ${desc.join(' / ')}`);
         maskedLines.push(`・糖代謝判定: ${!isHigh ? '正常域 🎯' : '高め'}`);
         items.push({
