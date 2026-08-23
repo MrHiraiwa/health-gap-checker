@@ -646,7 +646,7 @@
     <div id="btn-mode-school" class="mode-btn" onclick="switchMode('school')">🎒 未成年・学校健診</div>
   </div>
 
-  <form id="health-form">
+  <form id="health-form" onsubmit="event.preventDefault(); runAnalysis();">
     <!-- 基本情報 -->
     <fieldset>
       <legend>👤 基本プロフィール & 運動量</legend>
@@ -942,7 +942,7 @@ let latestSummaryData = null;
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v3') || '{}');
+    const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v4') || '{}');
     const initialMode = saved._mode || 'adult';
     
     // 1. 各フィールドの値を復元
@@ -992,7 +992,6 @@ function switchMode(mode, save = true) {
   const adultWeightGoal = document.getElementById('weight-goal-wrapper');
   const laurerGoal = document.getElementById('laurer-goal-wrapper');
 
-  // 活動量セレクトをモードに合わせて更新
   renderActivityOptions(mode);
 
   if (mode === 'school') {
@@ -1034,7 +1033,7 @@ function autoSave() {
     if (el) data[id] = el.value;
   });
   try {
-    localStorage.setItem('kenshin_pal_data_v3', JSON.stringify(data));
+    localStorage.setItem('kenshin_pal_data_v4', JSON.stringify(data));
   } catch (e) {}
 }
 
@@ -1082,7 +1081,7 @@ function importData(event) {
 function clearData() {
   if (confirm('入力内容をリセットしますか？')) {
     const savedMode = currentMode;
-    try { localStorage.removeItem('kenshin_pal_data_v3'); } catch (e) {}
+    try { localStorage.removeItem('kenshin_pal_data_v4'); } catch (e) {}
     
     fields.forEach(id => {
       const el = document.getElementById(id);
@@ -1144,7 +1143,7 @@ function runAnalysis() {
   const laurerGoalType = (document.getElementById('laurer_goal_type') && document.getElementById('laurer_goal_type').value) || 'standard';
 
   if (isNaN(h) || isNaN(w) || h <= 0 || w <= 0) {
-    alert('「身長」と「体重」を正しく入力してから実行してください💡');
+    alert('「身長」と「体重」を入力してから実行してください💡');
     return;
   }
 
