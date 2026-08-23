@@ -219,19 +219,26 @@
       align-items: center;
       background: #e0e7ff;
       border: 1px solid #c7d2fe;
-      padding: 10px 16px;
+      padding: 10px 14px;
       border-radius: 8px;
       margin-bottom: 16px;
-      flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
     }
     .print-options {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
       font-size: 0.8rem;
       color: #3730a3;
       font-weight: bold;
+      cursor: pointer;
+      margin: 0;
+      white-space: nowrap;
+    }
+    .print-options input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
       cursor: pointer;
     }
     .btn-action-group {
@@ -250,10 +257,29 @@
       display: flex;
       align-items: center;
       gap: 4px;
+      white-space: nowrap;
     }
     .btn-copy { background: #059669; }
     .btn-print:hover { background: #3730a3; }
     .btn-copy:hover { background: #047857; }
+
+    @media (max-width: 540px) {
+      .print-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      .print-options {
+        justify-content: flex-start;
+      }
+      .btn-action-group {
+        width: 100%;
+      }
+      .btn-print, .btn-copy {
+        flex: 1;
+        justify-content: center;
+      }
+    }
 
     .report-header-print {
       display: none;
@@ -843,7 +869,7 @@
 
     <div class="print-bar">
       <label class="print-options">
-        <input type="checkbox" id="mask-private-checkbox"> 🔏 プライバシー保護（印刷時に数値を伏せる）
+        <input type="checkbox" id="mask-private-checkbox"> 🔏 数値を伏せて印刷
       </label>
       <div class="btn-action-group">
         <button type="button" class="btn-copy" onclick="copyAnalysisText()">結果コピー 📋</button>
@@ -1100,7 +1126,6 @@ function runAnalysis() {
   const roadmapCard = document.getElementById('roadmap-result-card');
   const dietCard = document.getElementById('diet-result-card');
 
-  // 総水分目安(体重×35ml) と 飲み物単体目標(総水分-1000ml)
   let totalWater = w ? Math.round(w * 35) : 2500;
   let drinkWaterMin = w ? Math.max(1200, Math.round(w * 22)) : 1500;
   let drinkWaterMax = w ? Math.min(3000, Math.round(w * 30)) : 2000;
@@ -1125,7 +1150,7 @@ function runAnalysis() {
           </div>
         </div>
         <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px;">
-          🥤 <strong>飲み物としての補給目標:</strong> 約 <strong>${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L / 日</strong> ｜ <span style="color:#64748b;">🍚 食事込みの総水分目安: 約 ${(totalWater/1000).toFixed(1)} L</span>
+          🥤 <strong>飲み物としての補給目標:</strong> 約 <strong>${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L / 日</strong> ｜ <span style="color:#64748b;">🍚 食事込み総水分: 約 ${(totalWater/1000).toFixed(1)} L</span>
         </div>
       `;
       summaryLines.push(`・成長期推奨カロリー: ${recCalChild} kcal/日`);
