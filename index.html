@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="ja">
+<!--
+  MIT License
+
+  Copyright (c) 2026 Mrhiraiwa
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+-->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🩺 健診ギャップ分析 & ダイエット・ヘルス処方箋</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --subtext: #64748b;
+      --border: #e2e8f0;
+      --ok: #10b981;
+      --warn: #f59e0b;
+      --alert: #ef4444;
+      --calorie-bg: #fefce8;
+      --calorie-border: #fef08a;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 780px;
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    h1 {
+      font-size: 1.35rem;
+      text-align: center;
+      color: var(--primary);
+      margin-top: 0;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--subtext);
+      margin-bottom: 16px;
+    }
+    .privacy-banner {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      font-size: 0.8rem;
+      color: #065f46;
+      display: flex;
+      gap: 6px;
+    }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f1f5f9;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 0.8rem;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .btn-sub {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      color: #334155;
+    }
+    .btn-sub:hover { background: #f8fafc; }
+    
+    .mode-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      background: #e2e8f0;
+      padding: 4px;
+      border-radius: 8px;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #475569;
+      transition: all 0.2s;
+    }
+    .mode-btn.active {
+      background: #fff;
+      color: var(--primary);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    fieldset {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      background: #ffffff;
+    }
+    legend {
+      font-weight: bold;
+      font-size: 0.95rem;
+      color: #334155;
+      padding: 0 8px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 16px;
+    }
+    @media (max-width: 520px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+    }
+    .field-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 3px;
+    }
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .ref-val {
+      font-size: 0.72rem;
+      color: var(--subtext);
+    }
+    input, select {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+    }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    button.btn-main {
+      flex: 2;
+      padding: 14px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button.btn-main:hover { opacity: 0.95; }
+    .btn-clear {
+      flex: 1;
+      background: #e2e8f0;
+      color: #475569;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-clear:hover { background: #cbd5e1; }
+    
+    #analysis-section {
+      margin-top: 24px;
+      display: none;
+    }
+
+    .print-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #e0e7ff;
+      border: 1px solid #c7d2fe;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .btn-print {
+      background: #4338ca;
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-print:hover { background: #3730a3; }
+
+    .report-header-print {
+      display: none;
+    }
+
+    .calorie-card {
+      background: var(--calorie-bg);
+      border: 1px solid var(--calorie-border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .calorie-title {
+      font-weight: bold;
+      color: #854d0e;
+      font-size: 1rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .calorie-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+      text-align: center;
+    }
+    @media (max-width: 520px) {
+      .calorie-grid { grid-template-columns: 1fr; }
+    }
+    .calorie-box {
+      background: #ffffff;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #fef08a;
+    }
+    .calorie-box-val {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #b45309;
+    }
+    .calorie-box-lbl {
+      font-size: 0.75rem;
+      color: #713f12;
+    }
+
+    .special-prescription {
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .prescription-title {
+      font-weight: bold;
+      color: #be123c;
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+    .diet-target-card {
+      background: #fdf2f8;
+      border: 1px solid #fbcfe8;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .diet-target-title {
+      font-weight: bold;
+      color: #be185d;
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+    }
+    .analysis-item {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      page-break-inside: avoid;
+    }
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .item-name {
+      font-weight: bold;
+      font-size: 0.92rem;
+    }
+    .gap-badge {
+      font-size: 0.78rem;
+      font-weight: bold;
+      padding: 3px 8px;
+      border-radius: 20px;
+    }
+    .gap-achieved { background: #dcfce7; color: #15803d; }
+    .gap-warning { background: #fef3c7; color: #b45309; }
+    .gap-alert { background: #fee2e2; color: #b91c1c; }
+    .metric-compare {
+      font-size: 0.82rem;
+      color: #475569;
+      margin-bottom: 4px;
+      background: #f8fafc;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .action-tip {
+      font-size: 0.8rem;
+      color: #334155;
+      background: #eff6ff;
+      border-left: 3px solid #3b82f6;
+      padding: 6px 10px;
+      border-radius: 0 6px 6px 0;
+      margin-top: 4px;
+    }
+    .app-footer {
+      margin-top: 30px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--subtext);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    @media print {
+      body {
+        background-color: #ffffff;
+        padding: 0;
+        margin: 0;
+        color: #000000;
+      }
+      .container {
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+        border: none;
+      }
+      .privacy-banner, .toolbar, .mode-selector, #health-form, .btn-group, .print-bar, .app-footer {
+        display: none !important;
+      }
+      #analysis-section {
+        margin-top: 0;
+        display: block !important;
+      }
+      .report-header-print {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        border-bottom: 2px solid #334155;
+        padding-bottom: 8px;
+        margin-bottom: 16px;
+      }
+      .report-header-print h2 {
+        margin: 0;
+        font-size: 1.3rem;
+        color: #1e293b;
+      }
+      .report-header-print .print-date {
+        font-size: 0.8rem;
+        color: #64748b;
+      }
+      .analysis-item, .calorie-card, .diet-target-card, .special-prescription {
+        border: 1px solid #cbd5e1 !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+      }
+      .gap-badge {
+        border: 1px solid #94a3b8;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🩺 健診ギャップ分析 & ダイエット・ヘルス処方箋</h1>
+  <div class="subtitle">運動量・基礎代謝に応じた推奨摂取カロリーと、健康リスクに配慮した減量ガイド✨</div>
+
+  <div class="privacy-banner">
+    <span>🔒</span>
+    <div>
+      <strong>完全端末内処理（プライバシー保護）:</strong><br>
+      入力データは外部サーバーへ送信されません。すべて端末・ブラウザ内のみで安全に計算・保存されます。
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <span id="save-status">💾 自動保存中</span>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" class="btn-sub" onclick="exportData()">ファイルへ保存 (JSON) 📥</button>
+      <button type="button" class="btn-sub" onclick="document.getElementById('import-file').click()">ファイルから復元 📤</button>
+      <input type="file" id="import-file" style="display:none;" accept=".json" onchange="importData(event)">
+    </div>
+  </div>
+
+  <!-- モード切替 -->
+  <div class="mode-selector">
+    <div id="btn-mode-adult" class="mode-btn active" onclick="switchMode('adult')">👔 成人・一般健診モード</div>
+    <div id="btn-mode-school" class="mode-btn" onclick="switchMode('school')">🎒 未成年・学校健診モード</div>
+  </div>
+
+  <form id="health-form">
+    <!-- 基本情報 -->
+    <fieldset>
+      <legend>👤 基本プロフィール & 運動量</legend>
+      <div class="grid">
+        <div class="field">
+          <label for="gender">性別</label>
+          <select id="gender" onchange="autoSave()">
+            <option value="male">男性</option>
+            <option value="female">女性</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="age">年齢 (歳)</label>
+          <input type="number" id="age" placeholder="例: 48" oninput="handleAgeChange()">
+        </div>
+        <div class="field" style="grid-column: 1 / -1;">
+          <label for="activity_level">🏃‍♂️ 日常の活動量・運動量（カロリー計算に使用）</label>
+          <select id="activity_level" onchange="autoSave()">
+            <option value="1.2">低い (デスクワーク中心、ほぼ運動しない / 歩数〜5,000歩)</option>
+            <option value="1.5">普通 (通勤・立ち仕事・軽い散歩など / 歩数8,000〜12,000歩)</option>
+            <option value="1.75">高い (立ち仕事多め、定期的なランニングやジム運動習慣あり)</option>
+            <option value="2.0">非常に高い (激しい肉体労働、ハードなトレーニング・アスリート)</option>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- 身体測定 & 目指す体型 -->
+    <fieldset>
+      <legend>⚖️ 1. 身体測定 & 目指す体型ターゲット</legend>
+      <div class="grid">
+        <div class="field">
+          <label for="height">身長 (cm)</label>
+          <input type="number" id="height" step="0.1" placeholder="例: 170.0" oninput="autoSave()">
+        </div>
+        <div class="field">
+          <label for="weight">体重 (kg)</label>
+          <input type="number" id="weight" step="0.1" placeholder="例: 65.0" oninput="autoSave()">
+        </div>
+        <div class="field" style="grid-column: 1 / -1;">
+          <label for="weight_goal_type">🎯 目指したい体型目標タイプ</label>
+          <select id="weight_goal_type" onchange="autoSave()">
+            <option value="standard">標準体重 (BMI 22: 最も病気になりにくい健康体型)</option>
+            <option value="beauty">美容体重 (BMI 20: スッキリ見えて服が綺麗に着こなせる体型)</option>
+            <option value="model">モデル体重 (BMI 18.5: スリム体型 / 下限ギリギリ)</option>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- 未成年・学校健診専用項目 -->
+    <fieldset id="section-school" style="display: none;">
+      <legend>🎒 2. 学校健診 項目</legend>
+      <div class="grid">
+        <div class="field">
+          <label for="vision_r">視力 (右)</label>
+          <select id="vision_r" onchange="autoSave()">
+            <option value="A">A (1.0以上・良好)</option>
+            <option value="B">B (0.7〜0.9・やや低下)</option>
+            <option value="C">C (0.3〜0.6・要検査/眼鏡)</option>
+            <option value="D">D (0.3未満・要眼科受診)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="vision_l">視力 (左)</label>
+          <select id="vision_l" onchange="autoSave()">
+            <option value="A">A (1.0以上・良好)</option>
+            <option value="B">B (0.7〜0.9・やや低下)</option>
+            <option value="C">C (0.3〜0.6・要検査/眼鏡)</option>
+            <option value="D">D (0.3未満・要眼科受診)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="urine_protein">尿タンパク</label>
+          <select id="urine_protein" onchange="autoSave()">
+            <option value="-">（-）陰性・異常なし</option>
+            <option value="+-">（±）偽陽性・要観察</option>
+            <option value="+">（+）陽性・要精査</option>
+            <option value="2+">（2+以上）要受診</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="urine_sugar">尿糖</label>
+          <select id="urine_sugar" onchange="autoSave()">
+            <option value="-">（-）陰性・異常なし</option>
+            <option value="+">（+）陽性・要精査</option>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- 成人・一般健診専用項目 -->
+    <div id="section-adult">
+      <fieldset>
+        <legend>💓 2. 血圧測定</legend>
+        <div class="grid">
+          <div class="field">
+            <div class="field-header">
+              <label for="sbp">最高血圧 (収縮期 mmHg)</label>
+              <span class="ref-val">推奨: 120未満</span>
+            </div>
+            <input type="number" id="sbp" placeholder="例: 128" oninput="autoSave()">
+          </div>
+          <div class="field">
+            <div class="field-header">
+              <label for="dbp">最低血圧 (拡張期 mmHg)</label>
+              <span class="ref-val">推奨: 80未満</span>
+            </div>
+            <input type="number" id="dbp" placeholder="例: 84" oninput="autoSave()">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>🧪 3. 脂質検査</legend>
+        <div class="grid">
+          <div class="field">
+            <div class="field-header">
+              <label for="ldl">LDLコレステロール (mg/dL)</label>
+              <span class="ref-val">推奨: 119以下</span>
+            </div>
+            <input type="number" id="ldl" placeholder="例: 135" oninput="autoSave()">
+          </div>
+          <div class="field">
+            <div class="field-header">
+              <label for="tg">中性脂肪 / TG (mg/dL)</label>
+              <span class="ref-val">推奨: 149以下</span>
+            </div>
+            <input type="number" id="tg" placeholder="例: 160" oninput="autoSave()">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>🍚 4. 糖代謝検査</legend>
+        <div class="grid">
+          <div class="field">
+            <div class="field-header">
+              <label for="fbs">空腹時血糖 (mg/dL)</label>
+              <span class="ref-val">推奨: 99以下</span>
+            </div>
+            <input type="number" id="fbs" placeholder="例: 102" oninput="autoSave()">
+          </div>
+          <div class="field">
+            <div class="field-header">
+              <label for="hba1c">HbA1c (%)</label>
+              <span class="ref-val">推奨: 5.5%以下</span>
+            </div>
+            <input type="number" id="hba1c" step="0.1" placeholder="例: 5.7" oninput="autoSave()">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>🍺 5. 肝機能検査</legend>
+        <div class="grid">
+          <div class="field">
+            <div class="field-header">
+              <label for="alt">ALT (GPT / U/L)</label>
+              <span class="ref-val">推奨: 30以下</span>
+            </div>
+            <input type="number" id="alt" placeholder="例: 24" oninput="autoSave()">
+          </div>
+          <div class="field">
+            <div class="field-header">
+              <label for="gtp">γ-GTP (U/L)</label>
+              <span class="ref-val">推奨: 男50/女30以下</span>
+            </div>
+            <input type="number" id="gtp" placeholder="例: 45" oninput="autoSave()">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>💧 6. 腎機能・痛風（尿酸）</legend>
+        <div class="grid">
+          <div class="field">
+            <div class="field-header">
+              <label for="creatinine">血清クレアチニン (CRE mg/dL)</label>
+              <span class="ref-val">eGFR 60以上目標</span>
+            </div>
+            <input type="number" id="creatinine" step="0.01" placeholder="例: 0.88" oninput="autoSave()">
+          </div>
+          <div class="field">
+            <div class="field-header">
+              <label for="ua">尿酸値 (UA mg/dL)</label>
+              <span class="ref-val">推奨: 6.0以下</span>
+            </div>
+            <input type="number" id="ua" step="0.1" placeholder="例: 6.8" oninput="autoSave()">
+          </div>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="btn-group">
+      <button type="button" class="btn-clear" onclick="clearData()">全クリア 🗑️</button>
+      <button type="button" class="btn-main" onclick="runAnalysis()">推奨カロリー＆健康処方箋を計算 🚀</button>
+    </div>
+  </form>
+
+  <!-- 分析結果エリア -->
+  <div id="analysis-section">
+    <div class="report-header-print">
+      <h2>📋 健診ギャップ分析 & パーソナル処方箋レポート</h2>
+      <div class="print-date" id="print-date"></div>
+    </div>
+
+    <div class="print-bar">
+      <span style="font-size: 0.85rem; color: #3730a3; font-weight: bold;">🖨️ 分析レポートを紙やPDFで保存できます</span>
+      <button type="button" class="btn-print" onclick="printReport()">印刷 / PDF出力 📄</button>
+    </div>
+
+    <div class="calorie-card" id="calorie-result-card"></div>
+    <div class="diet-target-card" id="diet-result-card"></div>
+
+    <div class="special-prescription" id="special-prescription-card" style="display: none;">
+      <div class="prescription-title">⚠️ あなたの健康状態に合わせた安全な減量＆生活処方箋</div>
+      <div id="special-prescription-list" style="font-size: 0.88rem; color: #881337;"></div>
+    </div>
+
+    <h3 style="margin-bottom: 12px; font-size: 1.05rem;">📊 健診項目別 ギャップ詳細</h3>
+    <div id="analysis-items"></div>
+  </div>
+
+  <footer class="app-footer">
+    <div>🔒 <strong>プライバシー保証:</strong> 入力データは端末内でのみ処理・保存され、外部サーバー送信は一切ありません。</div>
+    <div style="margin-top: 4px;">
+      Released under the <strong>MIT License</strong> &copy; 2026 <strong>Mrhiraiwa</strong>
+    </div>
+  </footer>
+</div>
+
+<script>
+let currentMode = 'adult';
+const fields = [
+  'gender', 'age', 'activity_level', 'height', 'weight', 'weight_goal_type',
+  'vision_r', 'vision_l', 'urine_protein', 'urine_sugar',
+  'sbp', 'dbp', 'ldl', 'tg', 'fbs', 'hba1c', 'alt', 'gtp', 'creatinine', 'ua'
+];
+
+window.addEventListener('DOMContentLoaded', () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('health_calorie_custom_data') || '{}');
+    fields.forEach(id => {
+      if (saved[id] !== undefined) document.getElementById(id).value = saved[id];
+    });
+    if (saved._mode) switchMode(saved._mode, false);
+    if (Object.keys(saved).length > 0) runAnalysis();
+  } catch (e) {
+    document.getElementById('save-status').innerText = '⚠️ 自動保存無効';
+  }
+});
+
+function handleAgeChange() {
+  const age = parseFloat(document.getElementById('age').value);
+  if (!isNaN(age)) {
+    if (age < 18 && currentMode === 'adult') {
+      switchMode('school');
+    } else if (age >= 18 && currentMode === 'school') {
+      switchMode('adult');
+    }
+  }
+  autoSave();
+}
+
+function switchMode(mode, save = true) {
+  currentMode = mode;
+  document.getElementById('btn-mode-adult').classList.toggle('active', mode === 'adult');
+  document.getElementById('btn-mode-school').classList.toggle('active', mode === 'school');
+  document.getElementById('section-adult').style.display = mode === 'adult' ? 'block' : 'none';
+  document.getElementById('section-school').style.display = mode === 'school' ? 'block' : 'none';
+  if (save) autoSave();
+}
+
+function autoSave() {
+  const data = { _mode: currentMode };
+  fields.forEach(id => data[id] = document.getElementById(id).value);
+  try {
+    localStorage.setItem('health_calorie_custom_data', JSON.stringify(data));
+    document.getElementById('save-status').innerText = '💾 自動保存中';
+  } catch (e) {}
+}
+
+function exportData() {
+  const data = { _mode: currentMode };
+  fields.forEach(id => data[id] = document.getElementById(id).value);
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `health_calorie_data_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      fields.forEach(id => {
+        if (data[id] !== undefined) document.getElementById(id).value = data[id];
+      });
+      if (data._mode) switchMode(data._mode, false);
+      autoSave();
+      runAnalysis();
+      alert('データを復元しました✨');
+    } catch (err) {
+      alert('ファイルの読み込みに失敗しました。');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function clearData() {
+  if (confirm('入力内容をリセットしますか？')) {
+    try { localStorage.removeItem('health_calorie_custom_data'); } catch (e) {}
+    fields.forEach(id => {
+      if (id === 'gender') document.getElementById(id).value = 'male';
+      else if (id === 'activity_level') document.getElementById(id).value = '1.5';
+      else if (id === 'weight_goal_type') document.getElementById(id).value = 'standard';
+      else if (id.startsWith('vision')) document.getElementById(id).value = 'A';
+      else if (id.startsWith('urine')) document.getElementById(id).value = '-';
+      else document.getElementById(id).value = '';
+    });
+    document.getElementById('analysis-section').style.display = 'none';
+  }
+}
+
+function printReport() {
+  const now = new Date();
+  document.getElementById('print-date').innerText = `発行日: ${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+  window.print();
+}
+
+function runAnalysis() {
+  autoSave();
+
+  const gender = document.getElementById('gender').value;
+  const age = parseFloat(document.getElementById('age').value);
+  const act = parseFloat(document.getElementById('activity_level').value) || 1.5;
+  const h = parseFloat(document.getElementById('height').value);
+  const w = parseFloat(document.getElementById('weight').value);
+  const goalType = document.getElementById('weight_goal_type').value;
+
+  const items = [];
+  const prescriptions = [];
+
+  // 0. 推奨摂取カロリー & 代謝計算
+  if (h && w && age) {
+    let bmr = (10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161);
+    bmr = Math.round(bmr);
+    const tdee = Math.round(bmr * act);
+    const dietCal = Math.max(bmr, tdee - 350);
+
+    const calCard = document.getElementById('calorie-result-card');
+    calCard.innerHTML = `
+      <div class="calorie-title">🔥 エネルギー消費 & 推奨摂取カロリー</div>
+      <div style="font-size: 0.88rem; color: #713f12;">
+        活動量（レベル${act}）に基づく1日の適正カロリー設計です。
+      </div>
+      <div class="calorie-grid">
+        <div class="calorie-box">
+          <div class="calorie-box-val">${dietCal} <span style="font-size:0.8rem;">kcal</span></div>
+          <div class="calorie-box-lbl">🎯 減量目標カロリー<br>(月1〜1.5kg減ペース)</div>
+        </div>
+        <div class="calorie-box">
+          <div class="calorie-box-val">${tdee} <span style="font-size:0.8rem;">kcal</span></div>
+          <div class="calorie-box-lbl">⚖️ 体重維持カロリー<br>(TDEE: 現状維持)</div>
+        </div>
+        <div class="calorie-box">
+          <div class="calorie-box-val">${bmr} <span style="font-size:0.8rem;">kcal</span></div>
+          <div class="calorie-box-lbl">⚠️ 基礎代謝 (下限)<br>(これ以下は代謝低下リスク)</div>
+        </div>
+      </div>
+      <div style="font-size: 0.78rem; color: #854d0e; margin-top: 8px;">
+        💡 <strong>ポイント:</strong> 基礎代謝（${bmr}kcal）を下回る過度な食事制限は避け、<strong>${dietCal} kcal/日</strong> を目安にコントロールしましょう。
+      </div>
+    `;
+  }
+
+  // 1. 体重 & ダイエット進捗
+  if (h && w) {
+    const bmi = w / Math.pow(h / 100, 2);
+    const standardW = (22 * Math.pow(h / 100, 2)).toFixed(1);
+    const beautyW = (20 * Math.pow(h / 100, 2)).toFixed(1);
+    const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
+
+    let targetW = standardW;
+    let targetName = '標準体重 (BMI 22)';
+    if (goalType === 'beauty') { targetW = beautyW; targetName = '美容体重 (BMI 20)'; }
+    if (goalType === 'model') { targetW = modelW; targetName = 'モデル体重 (BMI 18.5)'; }
+
+    const diff = (w - targetW).toFixed(1);
+    const dietCard = document.getElementById('diet-result-card');
+    
+    let dietText = '';
+    if (diff > 0) {
+      dietText = `現在の体重 <strong>${w}kg</strong> は、目標の<strong>【${targetName}：${targetW}kg】</strong>まで <span style="color:#be185d; font-size:1.1rem; font-weight:bold;">あと -${diff} kg</span> の減量が必要です。`;
+    } else if (diff < 0) {
+      dietText = `現在の体重 <strong>${w}kg</strong> は、目標の【${targetName}：${targetW}kg】を下回っています（-${Math.abs(diff)}kg）。現状維持を推奨します。`;
+    } else {
+      dietText = `現在の体重 <strong>${w}kg</strong> は、目標の【${targetName}】ぴったりです！🎉`;
+    }
+
+    dietCard.innerHTML = `
+      <div class="diet-target-title">👗 体型・ダイエット進捗サマリー</div>
+      <div style="font-size: 0.9rem; color: #831843; margin-bottom: 8px;">${dietText}</div>
+      <div style="font-size: 0.8rem; color: #9d174d; background: #fff; padding: 6px 10px; border-radius: 6px;">
+        💡 参考体型別基準: 標準(BMI22)=<strong>${standardW}kg</strong> ｜ 美容(BMI20)=<strong>${beautyW}kg</strong> ｜ モデル(BMI18.5)=<strong>${modelW}kg</strong>
+      </div>
+    `;
+
+    items.push({
+      name: `体重 ＆ 体型進捗 (${targetName})`,
+      compare: `実測: <strong>${w} kg</strong> (BMI: ${bmi.toFixed(1)}) ｜ 選択目標: <strong>${targetW} kg</strong>`,
+      badge: diff <= 0 ? 'gap-achieved' : (diff > 4 ? 'gap-alert' : 'gap-warning'),
+      badgeText: diff <= 0 ? '目標達成 🎯' : `あと -${diff} kg`,
+      tip: '算出した推奨摂取カロリーと適度なウォーキングをベースに進めましょう🏃‍♂️'
+    });
+  }
+
+  // 学校健診モード
+  if (currentMode === 'school') {
+    const vr = document.getElementById('vision_r').value;
+    const vl = document.getElementById('vision_l').value;
+    const up = document.getElementById('urine_protein').value;
+
+    items.push({
+      name: '視力検査 (右 / 左)',
+      compare: `右: <strong>${vr}</strong> ｜ 左: <strong>${vl}</strong>`,
+      badge: (vr === 'A' && vl === 'A') ? 'gap-achieved' : 'gap-warning',
+      badgeText: (vr === 'A' && vl === 'A') ? '良好 (1.0以上)' : '要観察・受診',
+      tip: (vr !== 'A' || vl !== 'A') ? '黒板が見えにくい場合は眼科での再検査や眼鏡調整を検討してください👓' : '良好です！'
+    });
+
+    if (up !== '-') {
+      prescriptions.push('💧 <strong>学校検尿で尿タンパク陽性:</strong> 激しい運動を控え、再検査（早朝尿検査）を受けましょう。');
+    }
+  }
+
+  // 成人モード
+  if (currentMode === 'adult') {
+    const sbp = parseFloat(document.getElementById('sbp').value);
+    const dbp = parseFloat(document.getElementById('dbp').value);
+    const ldl = parseFloat(document.getElementById('ldl').value);
+    const tg = parseFloat(document.getElementById('tg').value);
+    const fbs = parseFloat(document.getElementById('fbs').value);
+    const hba1c = parseFloat(document.getElementById('hba1c').value);
+    const alt = parseFloat(document.getElementById('alt').value);
+    const gtp = parseFloat(document.getElementById('gtp').value);
+    const cre = parseFloat(document.getElementById('creatinine').value);
+    const ua = parseFloat(document.getElementById('ua').value);
+
+    // 1. 腎機能 (eGFR)
+    let egfr = null;
+    if (cre && age) {
+      egfr = 194 * Math.pow(cre, -1.094) * Math.pow(age, -0.287);
+      if (gender === 'female') egfr *= 0.739;
+      egfr = parseFloat(egfr.toFixed(1));
+
+      if (egfr < 60 || cre > (gender === 'male' ? 1.0 : 0.7)) {
+        prescriptions.push('💧 <strong>腎機能ケア中のダイエット注意点:</strong><br>プロテインの過剰摂取は腎臓に負荷をかけます。タンパク質は適正量（体重×0.8〜1.0g）に留め、<strong>「減塩（1日6g未満）」と「水分補給（目標2〜3L）」</strong>を軸にカロリー調整を行ってください。');
+      }
+
+      items.push({
+        name: '腎機能 (eGFR / 推算糸球体濾過量)',
+        compare: `実測: <strong>${egfr} mL/分/1.73㎡</strong> (CRE: ${cre}) ｜ 推奨: <strong>60.0 以上</strong>`,
+        badge: egfr >= 60 ? 'gap-achieved' : (egfr >= 50 ? 'gap-warning' : 'gap-alert'),
+        badgeText: egfr >= 60 ? '正常域 💧' : `低下 (目標60まで +${(60 - egfr).toFixed(1)})`,
+        tip: '腎臓保護には減塩・十分な水分補給・血圧管理が最優先です。'
+      });
+    }
+
+    // 2. 高血圧
+    if (sbp >= 130 || dbp >= 85) {
+      prescriptions.push('💓 <strong>血圧高めのダイエット注意点:</strong><br>息を止めて力む筋トレは避け、ウォーキング等の有酸素運動を中心に行いましょう。食事は減塩を徹底し、カリウム（野菜類）を意識してください。');
+    }
+    if (sbp || dbp) {
+      const maxDiff = Math.max(sbp ? sbp - 120 : 0, dbp ? dbp - 80 : 0);
+      items.push({
+        name: '血圧 (収縮期 / 拡張期)',
+        compare: `実測: <strong>${sbp || '-'} / ${dbp || '-'} mmHg</strong> ｜ 推奨: <strong>120/80 未満</strong>`,
+        badge: maxDiff <= 0 ? 'gap-achieved' : (maxDiff >= 15 ? 'gap-alert' : 'gap-warning'),
+        badgeText: maxDiff <= 0 ? '正常血圧 🎯' : `目標まで +${maxDiff} mmHg`,
+        tip: '減塩と有酸素運動が効果的です🧂'
+      });
+    }
+
+    // 3. 肝機能
+    const gtpTarget = gender === 'male' ? 50 : 30;
+    if ((alt && alt > 30) || (gtp && gtp > gtpTarget)) {
+      prescriptions.push('🍺 <strong>肝機能高め（脂肪肝傾向）のダイエット注意点:</strong><br>極端な絶食は避け、夜遅い炭水化物・アルコールをカットして有酸素運動で内臓脂肪を燃焼させましょう。');
+    }
+    if (alt || gtp) {
+      const isWarn = (alt && alt > 30) || (gtp && gtp > gtpTarget);
+      items.push({
+        name: '肝機能 (ALT / γ-GTP)',
+        compare: `実測: <strong>ALT:${alt || '-'} / γ-GTP:${gtp || '-'} U/L</strong> ｜ 推奨: <strong>ALT 30以下 / γ-GTP ${gtpTarget}以下</strong>`,
+        badge: !isWarn ? 'gap-achieved' : 'gap-warning',
+        badgeText: !isWarn ? '正常域 🎯' : '目標超過',
+        tip: '夜間の糖質控えめとアルコール調整が効果的です。'
+      });
+    }
+
+    // 4. 尿酸値
+    if (ua && ua > 6.0) {
+      prescriptions.push('🦶 <strong>尿酸値高めのダイエット注意点:</strong><br>急激な体重減少やハードな無酸素運動は尿酸値を急上昇させます。水分を1日2L以上補給し、月1kg程度の緩やかな減量を行ってください。');
+    }
+    if (ua) {
+      const diff = (ua - 6.0).toFixed(1);
+      items.push({
+        name: '尿酸値 (UA)',
+        compare: `実測: <strong>${ua} mg/dL</strong> ｜ 推奨: <strong>6.0 以下</strong>`,
+        badge: ua <= 6.0 ? 'gap-achieved' : (ua > 7.0 ? 'gap-alert' : 'gap-warning'),
+        badgeText: ua <= 6.0 ? '理想域 🎯' : `あと -${diff} mg/dL`,
+        tip: '水分補給を徹底し、プリン体・果糖を控えましょう🥤'
+      });
+    }
+
+    // 5. 脂質 & 糖
+    if (ldl) {
+      const diff = ldl - 119;
+      items.push({
+        name: 'LDLコレステロール',
+        compare: `実測: <strong>${ldl} mg/dL</strong> ｜ 推奨: <strong>119 以下</strong>`,
+        badge: diff <= 0 ? 'gap-achieved' : 'gap-warning',
+        badgeText: diff <= 0 ? '基準内 🎯' : `あと -${diff} mg/dL`,
+        tip: '食物繊維や青魚を積極的に摂りましょう🐟'
+      });
+    }
+    if (tg) {
+      const diff = tg - 149;
+      items.push({
+        name: '中性脂肪 (TG)',
+        compare: `実測: <strong>${tg} mg/dL</strong> ｜ 推奨: <strong>149 以下</strong>`,
+        badge: diff <= 0 ? 'gap-achieved' : 'gap-warning',
+        badgeText: diff <= 0 ? '基準内 🎯' : `あと -${diff} mg/dL`,
+        tip: '夜遅い主食やお酒を控えめにしましょう。'
+      });
+    }
+    if (hba1c || fbs) {
+      const isHigh = (hba1c && hba1c > 5.5) || (fbs && fbs > 99);
+      items.push({
+        name: '糖代謝 (血糖 / HbA1c)',
+        compare: `実測: <strong>${fbs ? fbs+'mg/dL' : ''} ${hba1c ? 'HbA1c:'+hba1c+'%' : ''}</strong> ｜ 推奨: <strong>血糖99以下 / HbA1c 5.5%以下</strong>`,
+        badge: !isHigh ? 'gap-achieved' : 'gap-warning',
+        badgeText: !isHigh ? '正常域 🎯' : '高め',
+        tip: '食後の散歩や野菜ファーストが効果的です🚶'
+      });
+    }
+  }
+
+  // 処方箋表示
+  const presCard = document.getElementById('special-prescription-card');
+  const presList = document.getElementById('special-prescription-list');
+  if (prescriptions.length > 0) {
+    presList.innerHTML = prescriptions.map(p => `<div style="margin-bottom: 8px; line-height: 1.5;">${p}</div>`).join('');
+    presCard.style.display = 'block';
+  } else {
+    presCard.style.display = 'none';
+  }
+
+  // 項目別カード表示
+  const list = document.getElementById('analysis-items');
+  list.innerHTML = '';
+  items.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'analysis-item';
+    card.innerHTML = `
+      <div class="item-header">
+        <span class="item-name">${item.name}</span>
+        <span class="gap-badge ${item.badge}">${item.badgeText}</span>
+      </div>
+      <div class="metric-compare">${item.compare}</div>
+      <div class="action-tip">💡 <strong>ワンポイント:</strong> ${item.tip}</div>
+    `;
+    list.appendChild(card);
+  });
+
+  document.getElementById('analysis-section').style.display = 'block';
+}
+</script>
+</body>
+</html>
