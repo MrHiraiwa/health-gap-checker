@@ -211,14 +211,29 @@
     #analysis-section {
       margin-top: 24px;
       display: none;
+      scroll-margin-top: 16px;
+    }
+
+    .report-badge-header {
+      background: #e0e7ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #3730a3;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .print-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #e0e7ff;
-      border: 1px solid #c7d2fe;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
       padding: 10px 14px;
       border-radius: 8px;
       margin-bottom: 16px;
@@ -229,7 +244,7 @@
       align-items: center;
       gap: 6px;
       font-size: 0.8rem;
-      color: #3730a3;
+      color: #334155;
       font-weight: bold;
       cursor: pointer;
       margin: 0;
@@ -660,7 +675,7 @@
         </div>
         <div class="field">
           <label for="age">年齢 (歳)</label>
-          <input type="number" id="age" placeholder="例: 12" oninput="autoSave()">
+          <input type="number" id="age" placeholder="例: 11" oninput="handleAgeInput()">
         </div>
         <div class="field" style="grid-column: 1 / -1;" id="activity-field-wrapper">
           <label for="activity_level" id="activity_level_label">🏃‍♂️ 日常の活動量・運動量（カロリー計算に使用）</label>
@@ -672,16 +687,16 @@
     </fieldset>
 
     <!-- 身体測定 & 目指す体型 -->
-    <fieldset id="section-body-adult">
+    <fieldset id="section-body">
       <legend>⚖️ 1. 身体測定 & 目指す体型ターゲット</legend>
       <div class="grid">
         <div class="field">
           <label for="height">身長 (cm) <span style="color:#ef4444;">*</span></label>
-          <input type="number" id="height" step="0.1" placeholder="例: 150.0" oninput="autoSave()">
+          <input type="number" id="height" step="0.1" placeholder="例: 145.0" oninput="autoSave()">
         </div>
         <div class="field">
           <label for="weight">体重 (kg) <span style="color:#ef4444;">*</span></label>
-          <input type="number" id="weight" step="0.1" placeholder="例: 45.0" oninput="autoSave()">
+          <input type="number" id="weight" step="0.1" placeholder="例: 40.0" oninput="autoSave()">
         </div>
         
         <!-- 成人用 目標選択 -->
@@ -871,6 +886,9 @@
       <div class="print-date" id="print-date"></div>
     </div>
 
+    <!-- 画面表示用モード明示バッジ -->
+    <div class="report-badge-header" id="report-badge-header"></div>
+
     <div class="print-bar">
       <label class="print-options">
         <input type="checkbox" id="mask-private-checkbox"> 🔏 数値を伏せる (プライバシー)
@@ -886,7 +904,7 @@
     <div class="diet-target-card" id="diet-result-card"></div>
 
     <div class="special-prescription" id="special-prescription-card" style="display: none;">
-      <div class="prescription-title">⚠️ あなたの健康状態に合わせた安全な減量＆生活処方箋</div>
+      <div class="prescription-title">⚠️ 安全な生活＆健康サポート処方箋</div>
       <div id="special-prescription-list" style="font-size: 0.88rem; color: #881337;"></div>
     </div>
 
@@ -917,6 +935,7 @@
 
 <script>
 let currentMode = 'adult'; // 'adult', 'simple', 'school'
+const STORAGE_KEY = 'kenshin_pal_storage_v13';
 
 const fields = [
   'gender', 'age', 'activity_level', 'height', 'weight', 'weight_goal_type', 'laurer_goal_type',
@@ -942,34 +961,47 @@ let latestSummaryData = null;
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v5') || '{}');
-    const initialMode = saved._mode || 'adult';
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      raw = localStorage.getItem('kenshin_pal_storage_v12') || localStorage.getItem('kenshin_pal_storage_v11');
+    }
+    const saved = JSON.parse(raw || '{}');
     
-    // 1. 各フィールドの値を復元
     fields.forEach(id => {
       if (saved[id] !== undefined && document.getElementById(id)) {
         document.getElementById(id).value = saved[id];
       }
     });
 
-    // 2. モードを適用
-    switchMode(initialMode, false);
+    let targetMode = saved._mode;
+    if (!targetMode) {
+      const ageVal = parseFloat(saved.age);
+      targetMode = (!isNaN(ageVal) && ageVal < 18) ? 'school' : 'adult';
+    }
 
-    // 3. 活動量の値を再適用
-    if (saved.activity_level) {
+    switchMode(targetMode);
+
+    if (saved.activity_level && document.getElementById('activity_level')) {
       document.getElementById('activity_level').value = saved.activity_level;
     }
-
-    // 4. 身長・体重があれば自動分析
-    const h = parseFloat(document.getElementById('height').value);
-    const w = parseFloat(document.getElementById('weight').value);
-    if (!isNaN(h) && !isNaN(w) && h > 0 && w > 0) {
-      runAnalysis();
-    }
   } catch (e) {
-    switchMode('adult', false);
+    switchMode('adult');
   }
 });
+
+function handleAgeInput() {
+  const ageVal = parseFloat(document.getElementById('age').value);
+  if (!isNaN(ageVal)) {
+    if (ageVal < 18 && currentMode === 'adult') {
+      switchMode('school');
+      return;
+    } else if (ageVal >= 18 && currentMode === 'school') {
+      switchMode('adult');
+      return;
+    }
+  }
+  autoSave();
+}
 
 function renderActivityOptions(mode, selectedVal) {
   const select = document.getElementById('activity_level');
@@ -979,12 +1011,16 @@ function renderActivityOptions(mode, selectedVal) {
   select.value = currentVal;
 }
 
-function switchMode(mode, save = true) {
+function switchMode(mode) {
   currentMode = mode;
 
-  document.getElementById('btn-mode-adult').classList.toggle('active', mode === 'adult');
-  document.getElementById('btn-mode-simple').classList.toggle('active', mode === 'simple');
-  document.getElementById('btn-mode-school').classList.toggle('active', mode === 'school');
+  const btnAdult = document.getElementById('btn-mode-adult');
+  const btnSimple = document.getElementById('btn-mode-simple');
+  const btnSchool = document.getElementById('btn-mode-school');
+
+  if (btnAdult) btnAdult.classList.toggle('active', mode === 'adult');
+  if (btnSimple) btnSimple.classList.toggle('active', mode === 'simple');
+  if (btnSchool) btnSchool.classList.toggle('active', mode === 'school');
 
   const adultSection = document.getElementById('section-adult');
   const schoolSection = document.getElementById('section-school');
@@ -993,42 +1029,34 @@ function switchMode(mode, save = true) {
   const adultWeightGoal = document.getElementById('weight-goal-wrapper');
   const laurerGoal = document.getElementById('laurer-goal-wrapper');
 
-  // 活動量セレクトをモードに合わせて更新
   renderActivityOptions(mode);
 
   if (mode === 'school') {
-    adultSection.style.display = 'none';
-    schoolSection.style.display = 'block';
-    activityField.style.display = 'flex';
-    adultWeightGoal.style.display = 'none';
-    laurerGoal.style.display = 'flex';
+    if (adultSection) adultSection.style.display = 'none';
+    if (schoolSection) schoolSection.style.display = 'block';
+    if (activityField) activityField.style.display = 'flex';
+    if (adultWeightGoal) adultWeightGoal.style.display = 'none';
+    if (laurerGoal) laurerGoal.style.display = 'block';
   } else if (mode === 'simple') {
-    adultSection.style.display = 'block';
-    schoolSection.style.display = 'none';
+    if (adultSection) adultSection.style.display = 'block';
+    if (schoolSection) schoolSection.style.display = 'none';
     bloodTestFields.forEach(el => el.style.display = 'none');
-    activityField.style.display = 'none';
-    adultWeightGoal.style.display = 'none';
-    laurerGoal.style.display = 'none';
+    if (activityField) activityField.style.display = 'none';
+    if (adultWeightGoal) adultWeightGoal.style.display = 'none';
+    if (laurerGoal) laurerGoal.style.display = 'none';
   } else {
-    adultSection.style.display = 'block';
-    schoolSection.style.display = 'none';
+    if (adultSection) adultSection.style.display = 'block';
+    if (schoolSection) schoolSection.style.display = 'none';
     bloodTestFields.forEach(el => el.style.display = 'block');
-    activityField.style.display = 'flex';
-    adultWeightGoal.style.display = 'flex';
-    laurerGoal.style.display = 'none';
+    if (activityField) activityField.style.display = 'flex';
+    if (adultWeightGoal) adultWeightGoal.style.display = 'block';
+    if (laurerGoal) laurerGoal.style.display = 'none';
   }
 
-  // 表示エリアを完全にリセットしてから現在のモードで再実行
+  const analysisSec = document.getElementById('analysis-section');
+  if (analysisSec) analysisSec.style.display = 'none';
   resetAnalysisDisplay();
-
-  if (save) {
-    autoSave();
-    const h = parseFloat(document.getElementById('height').value);
-    const w = parseFloat(document.getElementById('weight').value);
-    if (!isNaN(h) && !isNaN(w) && h > 0 && w > 0) {
-      runAnalysis();
-    }
-  }
+  autoSave();
 }
 
 function resetAnalysisDisplay() {
@@ -1038,6 +1066,7 @@ function resetAnalysisDisplay() {
   const presCard = document.getElementById('special-prescription-card');
   const presList = document.getElementById('special-prescription-list');
   const list = document.getElementById('analysis-items');
+  const badgeHeader = document.getElementById('report-badge-header');
 
   if (calCard) { calCard.style.display = 'none'; calCard.innerHTML = ''; }
   if (roadmapCard) { roadmapCard.style.display = 'none'; roadmapCard.innerHTML = ''; }
@@ -1045,6 +1074,7 @@ function resetAnalysisDisplay() {
   if (presCard) { presCard.style.display = 'none'; }
   if (presList) { presList.innerHTML = ''; }
   if (list) { list.innerHTML = ''; }
+  if (badgeHeader) { badgeHeader.innerHTML = ''; }
 }
 
 function autoSave() {
@@ -1054,7 +1084,7 @@ function autoSave() {
     if (el) data[id] = el.value;
   });
   try {
-    localStorage.setItem('kenshin_pal_data_v5', JSON.stringify(data));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {}
 }
 
@@ -1081,19 +1111,19 @@ function importData(event) {
     try {
       const data = JSON.parse(e.target.result);
       const targetMode = data._mode || 'adult';
-      switchMode(targetMode, false);
+      switchMode(targetMode);
       fields.forEach(id => {
         const el = document.getElementById(id);
         if (el && data[id] !== undefined) el.value = data[id];
       });
-      if (data.activity_level) {
+      if (data.activity_level && document.getElementById('activity_level')) {
         document.getElementById('activity_level').value = data.activity_level;
       }
       autoSave();
       runAnalysis();
       alert('データを復元しました✨');
     } catch (err) {
-      alert('ファイルの読み込みに失敗しました。');
+      alert('ファイルの読み込みに失敗しました: ' + err.message);
     }
   };
   reader.readAsText(file);
@@ -1102,7 +1132,9 @@ function importData(event) {
 function clearData() {
   if (confirm('入力内容をリセットしますか？')) {
     const savedMode = currentMode;
-    try { localStorage.removeItem('kenshin_pal_data_v5'); } catch (e) {}
+    try { 
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
     
     fields.forEach(id => {
       const el = document.getElementById(id);
@@ -1116,8 +1148,7 @@ function clearData() {
       else el.value = '';
     });
     
-    switchMode(savedMode, true);
-    document.getElementById('analysis-section').style.display = 'none';
+    switchMode(savedMode);
   }
 }
 
@@ -1127,7 +1158,8 @@ function copyAnalysisText() {
     return;
   }
 
-  const isMasked = document.getElementById('mask-private-checkbox').checked;
+  const maskEl = document.getElementById('mask-private-checkbox');
+  const isMasked = maskEl ? maskEl.checked : false;
   const lines = isMasked ? latestSummaryData.masked : latestSummaryData.raw;
   const text = lines.join('\n');
 
@@ -1140,9 +1172,11 @@ function copyAnalysisText() {
 
 function printReport() {
   const now = new Date();
-  document.getElementById('print-date').innerText = `発行日: ${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+  const dateEl = document.getElementById('print-date');
+  if (dateEl) dateEl.innerText = `発行日: ${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
   
-  const isMasked = document.getElementById('mask-private-checkbox').checked;
+  const maskEl = document.getElementById('mask-private-checkbox');
+  const isMasked = maskEl ? maskEl.checked : false;
   if (isMasked) {
     document.body.classList.add('hide-private-data');
   } else {
@@ -1155,543 +1189,577 @@ function printReport() {
 function runAnalysis() {
   autoSave();
 
-  const gender = (document.getElementById('gender') && document.getElementById('gender').value) || 'male';
-  const age = parseFloat(document.getElementById('age') ? document.getElementById('age').value : NaN);
-  const act = parseFloat(document.getElementById('activity_level') ? document.getElementById('activity_level').value : 1.5) || 1.5;
-  const h = parseFloat(document.getElementById('height') ? document.getElementById('height').value : NaN);
-  const w = parseFloat(document.getElementById('weight') ? document.getElementById('weight').value : NaN);
-  const goalType = (document.getElementById('weight_goal_type') && document.getElementById('weight_goal_type').value) || 'standard';
-  const laurerGoalType = (document.getElementById('laurer_goal_type') && document.getElementById('laurer_goal_type').value) || 'standard';
+  try {
+    resetAnalysisDisplay();
 
-  if (isNaN(h) || isNaN(w) || h <= 0 || w <= 0) {
-    alert('「身長」と「体重」を入力してから実行してください💡');
-    return;
-  }
+    const gender = (document.getElementById('gender') && document.getElementById('gender').value) || 'male';
+    const ageEl = document.getElementById('age');
+    const age = (ageEl && ageEl.value !== '') ? parseFloat(ageEl.value) : NaN;
+    const actEl = document.getElementById('activity_level');
+    const act = (actEl && actEl.value !== '') ? parseFloat(actEl.value) : 1.5;
+    const hEl = document.getElementById('height');
+    const h = (hEl && hEl.value !== '') ? parseFloat(hEl.value) : NaN;
+    const wEl = document.getElementById('weight');
+    const w = (wEl && wEl.value !== '') ? parseFloat(wEl.value) : NaN;
 
-  const items = [];
-  const prescriptions = [];
-  
-  const rawLines = [`【検診パル 分析サマリー (詳細版)】 (${new Date().toLocaleDateString()})`];
-  const maskedLines = [`【検診パル 分析サマリー (プライバシー保護版)】 (${new Date().toLocaleDateString()})`];
-
-  const calCard = document.getElementById('calorie-result-card');
-  const roadmapCard = document.getElementById('roadmap-result-card');
-  const dietCard = document.getElementById('diet-result-card');
-
-  // 表示エリア初期化
-  resetAnalysisDisplay();
-
-  const totalWater = Math.round(w * 35);
-  const drinkWaterMin = Math.max(1200, Math.round(w * 22));
-  const drinkWaterMax = Math.min(3000, Math.round(w * 30));
-
-  // ==========================================
-  // 🎒 1. 未成年・学校健診モード（排他処理）
-  // ==========================================
-  if (currentMode === 'school') {
-    if (!isNaN(age) && age > 0) {
-      const bmrChild = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
-      const recCalChild = Math.round(bmrChild * act);
-
-      calCard.innerHTML = `
-        <div class="calorie-title">🎒 成長期・発育のための推奨エネルギー必要量</div>
-        <div style="font-size: 0.88rem; color: #713f12;">
-          成長期のお子様には<strong>無理なカロリー制限は行いません</strong>。発育と運動に必要な適正エネルギーです。
-        </div>
-        <div class="calorie-grid">
-          <div class="calorie-box" style="grid-column: 1 / -1; background: #fffbeb; border: 1.5px solid #fde047;">
-            <div class="calorie-box-val" style="font-size: 1.35rem;">${recCalChild} <span style="font-size:0.85rem;">kcal / 日</span></div>
-            <div class="calorie-box-lbl">🌱 成長期 推奨摂取カロリー (活動レベル${act})<br>（3食バランスよくしっかり食べましょう）</div>
-          </div>
-        </div>
-        <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px;">
-          🥤 <strong>飲み物としての補給目標:</strong> 約 <strong>${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L / 日</strong> ｜ <span style="color:#64748b;">🍚 食事込み総水分: 約 ${(totalWater/1000).toFixed(1)} L</span>
-        </div>
-      `;
-      calCard.style.display = 'block';
-
-      rawLines.push(`・成長期推奨カロリー: ${recCalChild} kcal/日`);
-      rawLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日 (食事込み総量: 約 ${(totalWater/1000).toFixed(1)} L)`);
-      
-      maskedLines.push(`・成長期推奨カロリー: ${recCalChild} kcal/日`);
-      maskedLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
+    if (isNaN(h) || isNaN(w) || h <= 0 || w <= 0) {
+      alert('「身長」と「体重」を入力してから実行してください💡');
+      return;
     }
 
-    const lauter = (w / Math.pow(h, 3)) * 10000000;
-    let targetLauterVal = 130;
-    let targetLauterShort = '標準 130';
-    let targetLauterName = '標準発育 (ローレル指数 130)';
-
-    if (laurerGoalType === 'slim') {
-      targetLauterVal = 115;
-      targetLauterShort = 'スリム 115';
-      targetLauterName = 'スッキリ体型 (ローレル指数 115)';
-    } else if (laurerGoalType === 'upper') {
-      targetLauterVal = 145;
-      targetLauterShort = '上限 145';
-      targetLauterName = 'ふくよか許容上限 (ローレル指数 145)';
+    const items = [];
+    const prescriptions = [];
+    
+    const modeTitle = (currentMode === 'school') ? '🎒 未成年・学校健診 分析レポート' : ((currentMode === 'simple') ? '🏠 自宅計測 分析レポート' : '👔 成人・一般健診 分析レポート');
+    const badgeHeader = document.getElementById('report-badge-header');
+    if (badgeHeader) {
+      badgeHeader.innerHTML = `<span>${modeTitle}</span><span style="font-size:0.75rem; color:#4338ca;">判定完了 🎯</span>`;
     }
 
-    const targetLaurerW = parseFloat(((targetLauterVal * Math.pow(h, 3)) / 10000000).toFixed(1));
-    const laurerDiff = parseFloat((w - targetLaurerW).toFixed(1));
+    const rawLines = [`【${modeTitle} (詳細版)】 (${new Date().toLocaleDateString()})`];
+    const maskedLines = [`【${modeTitle} (プライバシー保護版)】 (${new Date().toLocaleDateString()})`];
 
-    let 判定 = '標準 (発育良好)';
-    let badgeCls = 'gap-achieved';
-    let badgeTxt = '正常域 🎯';
+    const calCard = document.getElementById('calorie-result-card');
+    const roadmapCard = document.getElementById('roadmap-result-card');
+    const dietCard = document.getElementById('diet-result-card');
 
-    if (lauter < 100) { 判定 = 'やせ気味 (栄養バランスに注意)'; badgeCls = 'gap-warning'; badgeTxt = 'やせ気味'; }
-    else if (lauter >= 160 && lauter < 190) { 判定 = '軽度太め (適度な運動・外遊びを推奨)'; badgeCls = 'gap-warning'; badgeTxt = 'やや太め'; }
-    else if (lauter >= 190) { 判定 = '肥満傾向 (生活習慣や食生活の見直しを推奨)'; badgeCls = 'gap-alert'; badgeTxt = '要生活改善'; }
+    const totalWater = Math.round(w * 35);
+    const drinkWaterMin = Math.max(1200, Math.round(w * 22));
+    const drinkWaterMax = Math.min(3000, Math.round(w * 30));
 
-    const neededHeightForCurrentWeight = Math.cbrt((w * 10000000) / targetLauterVal).toFixed(1);
-    const heightGrowthNeeded = parseFloat((neededHeightForCurrentWeight - h).toFixed(1));
+    // ==========================================
+    // 🎒 1. 未成年・学校健診モード
+    // ==========================================
+    if (currentMode === 'school') {
+      const laurerGoalEl = document.getElementById('laurer_goal_type');
+      const laurerGoalType = laurerGoalEl ? laurerGoalEl.value : 'standard';
 
-    if (lauter >= 160) {
-      const annualGrowth = 5.5;
-      const expectedNextYearH = (h + annualGrowth);
-      const expectedNextYearTargetW = parseFloat(((targetLauterVal * Math.pow(expectedNextYearH, 3)) / 10000000).toFixed(1));
-      
-      let planHtml = '';
-      if (lauter >= 190) {
-        planHtml = `
-          <div class="roadmap-title">📅 成長期・具体的発育ロードマップ（ステップ改善）</div>
-          <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
-            現在の身長（${h}cm）における適正体重目安は <strong style="color:#15803d;">${targetLaurerW} kg</strong> です（現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg 超過</span>）。<br>
-            成長期は急な減量は行わず、以下の<strong>【2段階ステップ】</strong>で無理なく適正化を目指します✨
+      if (!isNaN(age) && age > 0 && calCard) {
+        const bmrChild = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
+        const recCalChild = Math.round(bmrChild * act);
+
+        calCard.innerHTML = `
+          <div class="calorie-title">🎒 成長期・発育のための推奨エネルギー必要量</div>
+          <div style="font-size: 0.88rem; color: #713f12;">
+            成長期のお子様には<strong>無理なカロリー制限は行いません</strong>。発育と運動に必要な適正エネルギーです。
           </div>
-          <div style="background:#ffffff; border:1px solid #bbf7d0; border-radius:8px; padding:8px 12px; margin-top:8px; font-size:0.82rem; color:#166534;">
-            <strong>🎯 ステップ1 (直近の目標):</strong><br>
-            まずは「体重の急増をストップ」させ、ふくよか許容上限（145基準：${parseFloat(((145 * Math.pow(h, 3)) / 10000000).toFixed(1))}kg）を目指してジュースをお茶に変え、間食の時間を決めることからスタート！<br><br>
-            <strong>🌱 ステップ2 (1年後の成長目安):</strong><br>
-            1年後に身長が約+${annualGrowth}cm伸びて <strong>${expectedNextYearH.toFixed(1)} cm</strong> になった場合、体重を現在付近（約${expectedNextYearTargetW}kg）にキープできていれば自然と適正バランスに到達します。
+          <div class="calorie-grid">
+            <div class="calorie-box" style="grid-column: 1 / -1; background: #fffbeb; border: 1.5px solid #fde047;">
+              <div class="calorie-box-val" style="font-size: 1.35rem;">${recCalChild} <span style="font-size:0.85rem;">kcal / 日</span></div>
+              <div class="calorie-box-lbl">🌱 成長期 推奨摂取カロリー (活動レベル${act})<br>（3食バランスよくしっかり食べましょう）</div>
+            </div>
+          </div>
+          <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px;">
+            🥤 <strong>飲み物としての補給目標:</strong> 約 <strong>${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L / 日</strong> ｜ <span style="color:#64748b;">🍚 食事込み総水分: 約 ${(totalWater/1000).toFixed(1)} L</span>
           </div>
         `;
+        calCard.style.display = 'block';
+
+        rawLines.push(`・成長期推奨カロリー: ${recCalChild} kcal/日`);
+        rawLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日 (食事込み総量: 約 ${(totalWater/1000).toFixed(1)} L)`);
+        
+        maskedLines.push(`・成長期推奨カロリー: ${recCalChild} kcal/日`);
+        maskedLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
+      }
+
+      // ローレル指数算出
+      const laurer = (w / Math.pow(h, 3)) * 10000000;
+      let targetLauterVal = 130;
+      let targetLauterShort = '標準 130';
+      let targetLauterName = '標準発育 (ローレル指数 130)';
+
+      if (laurerGoalType === 'slim') {
+        targetLauterVal = 115;
+        targetLauterShort = 'スリム 115';
+        targetLauterName = 'スッキリ体型 (ローレル指数 115)';
+      } else if (laurerGoalType === 'upper') {
+        targetLauterVal = 145;
+        targetLauterShort = '上限 145';
+        targetLauterName = 'ふくよか許容上限 (ローレル指数 145)';
+      }
+
+      const targetLaurerW = parseFloat(((targetLauterVal * Math.pow(h, 3)) / 10000000).toFixed(1));
+      const laurerDiff = parseFloat((w - targetLaurerW).toFixed(1));
+
+      let 判定 = '標準 (発育良好)';
+      let badgeCls = 'gap-achieved';
+      let badgeTxt = '正常域 🎯';
+
+      if (laurer < 100) { 判定 = 'やせ気味 (栄養バランスに注意)'; badgeCls = 'gap-warning'; badgeTxt = 'やせ気味'; }
+      else if (laurer >= 160 && laurer < 190) { 判定 = '軽度太め (適度な運動・外遊びを推奨)'; badgeCls = 'gap-warning'; badgeTxt = 'やや太め'; }
+      else if (laurer >= 190) { 判定 = '肥満傾向 (生活習慣や食生活の見直しを推奨)'; badgeCls = 'gap-alert'; badgeTxt = '要生活改善'; }
+
+      const neededHeightForCurrentWeight = Math.cbrt((w * 10000000) / targetLauterVal).toFixed(1);
+      const heightGrowthNeeded = parseFloat((neededHeightForCurrentWeight - h).toFixed(1));
+
+      if (roadmapCard) {
+        if (laurer >= 160) {
+          const annualGrowth = 5.5;
+          const expectedNextYearH = (h + annualGrowth);
+          const expectedNextYearTargetW = parseFloat(((targetLauterVal * Math.pow(expectedNextYearH, 3)) / 10000000).toFixed(1));
+          
+          let planHtml = '';
+          if (laurer >= 190) {
+            planHtml = `
+              <div class="roadmap-title">📅 成長期・具体的発育ロードマップ（ステップ改善）</div>
+              <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
+                現在の身長（${h}cm）における適正体重目安は <strong style="color:#15803d;">${targetLaurerW} kg</strong> です（現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg 超過</span>）。<br>
+                成長期は急な減量は行わず、以下の<strong>【2段階ステップ】</strong>で無理なく適正化を目指します✨
+              </div>
+              <div style="background:#ffffff; border:1px solid #bbf7d0; border-radius:8px; padding:8px 12px; margin-top:8px; font-size:0.82rem; color:#166534;">
+                <strong>🎯 ステップ1 (直近の目標):</strong><br>
+                まずは「体重の急増をストップ」させ、ふくよか許容上限（145基準：${parseFloat(((145 * Math.pow(h, 3)) / 10000000).toFixed(1))}kg）を目指してジュースをお茶に変え、間食の時間を決めることからスタート！<br><br>
+                <strong>🌱 ステップ2 (1年後の成長目安):</strong><br>
+                1年後に身長が約+${annualGrowth}cm伸びて <strong>${expectedNextYearH.toFixed(1)} cm</strong> になった場合、体重を現在付近（約${expectedNextYearTargetW}kg）にキープできていれば自然と適正バランスに到達します。
+              </div>
+            `;
+          } else {
+            planHtml = `
+              <div class="roadmap-title">📅 成長期・発育ロードマップ（身長の伸びと体重キープ）</div>
+              <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
+                現在の身長（${h}cm）の適正体重目安は <strong style="color:#15803d;">${targetLaurerW} kg</strong> です（現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg 超過</span>）。<br>
+                体重を大きく減らす必要はありません。<strong>現在の体重をキープしながら、1年間の成長（身長 +約${annualGrowth}cm）を待つ</strong>ことで、1年後（身長 ${expectedNextYearH.toFixed(1)}cm / 適正目安 ${expectedNextYearTargetW}kg）には無理なく標準域（130）へ近づきます✨
+              </div>
+            `;
+          }
+          roadmapCard.innerHTML = planHtml;
+          roadmapCard.style.display = 'block';
+        } else if (heightGrowthNeeded > 0 && heightGrowthNeeded <= 10.0) {
+          roadmapCard.innerHTML = `
+            <div class="roadmap-title">📅 成長期・発育ロードマップ（自然な適正化）</div>
+            <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
+              現在の体重（${w}kg）をキープしたまま、身長が <span class="roadmap-highlight">あと約 +${heightGrowthNeeded} cm（身長 ${neededHeightForCurrentWeight} cm）</span> 伸びると、
+              自然に<strong>【${targetLauterName}】</strong>のバランスに到達します✨
+            </div>
+          `;
+          roadmapCard.style.display = 'block';
+        }
+      }
+
+      let laurerDiffText = '';
+      if (laurerDiff > 0) {
+        laurerDiffText = `目標の<strong>【${targetLauterName}：${targetLaurerW}kg】</strong>に対して、現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg</span> です。`;
+      } else if (laurerDiff < 0) {
+        laurerDiffText = `目標の<strong>【${targetLauterName}：${targetLaurerW}kg】</strong>に対して、現在 <span style="color:#2563eb; font-weight:bold;">-${Math.abs(laurerDiff)} kg</span> です。`;
       } else {
-        planHtml = `
-          <div class="roadmap-title">📅 成長期・発育ロードマップ（身長の伸びと体重キープ）</div>
-          <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
-            現在の身長（${h}cm）の適正体重目安は <strong style="color:#15803d;">${targetLaurerW} kg</strong> です（現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg 超過</span>）。<br>
-            体重を大きく減らす必要はありません。<strong>現在の体重をキープしながら、1年間の成長（身長 +約${annualGrowth}cm）を待つ</strong>ことで、1年後（身長 ${expectedNextYearH.toFixed(1)}cm / 適正目安 ${expectedNextYearTargetW}kg）には無理なく標準域（130）へ近づきます✨
+        laurerDiffText = `目標の<strong>【${targetLauterName}】</strong>ぴったりです！🎉`;
+      }
+
+      if (dietCard) {
+        dietCard.innerHTML = `
+          <div class="diet-target-title">🎒 学校健診・成長期 発育チェック</div>
+          <div style="font-size: 0.9rem; color: #831843; margin-bottom: 6px;">
+            実測: 身長 <strong>${h}cm</strong>・体重 <strong>${w}kg</strong> ｜ ローレル指数: <strong>${laurer.toFixed(1)}</strong>【${判定}】
           </div>
+          <div style="font-size: 0.85rem; color: #9d174d; margin-bottom: 6px;">${laurerDiffText}</div>
         `;
       }
-      roadmapCard.innerHTML = planHtml;
-      roadmapCard.style.display = 'block';
-    } else if (heightGrowthNeeded > 0 && heightGrowthNeeded <= 10.0) {
-      roadmapCard.innerHTML = `
-        <div class="roadmap-title">📅 成長期・発育ロードマップ（自然な適正化）</div>
-        <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
-          現在の体重（${w}kg）をキープしたまま、身長が <span class="roadmap-highlight">あと約 +${heightGrowthNeeded} cm（身長 ${neededHeightForCurrentWeight} cm）</span> 伸びると、
-          自然に<strong>【${targetLauterName}】</strong>のバランスに到達します✨
-        </div>
-      `;
-      roadmapCard.style.display = 'block';
-    }
 
-    let laurerDiffText = '';
-    if (laurerDiff > 0) {
-      laurerDiffText = `目標の<strong>【${targetLauterName}：${targetLaurerW}kg】</strong>に対して、現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg</span> です。`;
-    } else if (laurerDiff < 0) {
-      laurerDiffText = `目標の<strong>【${targetLauterName}：${targetLaurerW}kg】</strong>に対して、現在 <span style="color:#2563eb; font-weight:bold;">-${Math.abs(laurerDiff)} kg</span> です。`;
+      rawLines.push(`・ローレル指数: ${laurer.toFixed(1)} (${判定}) ｜ 実測: ${h}cm / ${w}kg ｜ 目標: ${targetLauterName} (目安: ${targetLaurerW}kg)`);
+      maskedLines.push(`・ローレル指数判定: 【${判定}】 ｜ 目標: ${targetLauterName}`);
+
+      items.push({
+        name: `体型目標 (${targetLauterShort})`,
+        compare: `実測: <strong>${laurer.toFixed(1)}</strong> (体重:${w}kg) ｜ 目標: <strong>${targetLauterVal}</strong> (目安:${targetLaurerW}kg)`,
+        badge: badgeCls,
+        badgeText: badgeTxt,
+        tip: laurer >= 160 ? 'ジュースをお茶に変え、夜遅い間食を控えて元気に外遊びしましょう🏀' : '成長期はしっかり食べて元気に体を動かすことが一番の健康です✨'
+      });
+
+      const vr = (document.getElementById('vision_r') && document.getElementById('vision_r').value) || 'A';
+      const vl = (document.getElementById('vision_l') && document.getElementById('vision_l').value) || 'A';
+      rawLines.push(`・視力: 右 ${vr} / 左 ${vl}`);
+      maskedLines.push(`・視力: 右 ${vr} / 左 ${vl}`);
+      items.push({
+        name: '視力検査 (右 / 左)',
+        compare: `右: <strong>${vr}</strong> ｜ 左: <strong>${vl}</strong>`,
+        badge: (vr === 'A' && vl === 'A') ? 'gap-achieved' : 'gap-warning',
+        badgeText: (vr === 'A' && vl === 'A') ? '良好 (1.0以上)' : '要観察・受診',
+        tip: (vr !== 'A' || vl !== 'A') ? '黒板が見えにくい場合は眼科での再検査や眼鏡調整を検討してください👓' : '良好です！'
+      });
+
+      const up = (document.getElementById('urine_protein') && document.getElementById('urine_protein').value) || '-';
+      let upBadge = 'gap-achieved';
+      let upText = '陰性 (-) 正常 🎯';
+      if (up === '+-') { upBadge = 'gap-warning'; upText = '偽陽性 (±) 要観察'; }
+      else if (up === '+' || up === '2+') { upBadge = 'gap-alert'; upText = `陽性 (${up}) 要精査`; }
+
+      rawLines.push(`・尿タンパク: ${up} (${upText})`);
+      maskedLines.push(`・尿タンパク: ${upText}`);
+      items.push({
+        name: '学校検尿: 尿タンパク',
+        compare: `検査結果: <strong>${up}</strong> ｜ 推奨: <strong>（-）陰性</strong>`,
+        badge: upBadge,
+        badgeText: upText,
+        tip: up === '-' ? '異常なしです✨' : '激しい運動や発熱の影響もありますが、陽性が続く場合は医療機関で再検査を受けましょう。'
+      });
+
+      if (up === '+' || up === '2+') {
+        prescriptions.push('💧 <strong>学校検尿で尿タンパク陽性:</strong> 激しい運動を控え、医療機関での再検査（早朝尿検査）を受けましょう。');
+      }
+
+      const us = (document.getElementById('urine_sugar') && document.getElementById('urine_sugar').value) || '-';
+      rawLines.push(`・尿糖: ${us === '-' ? '陰性 (-)' : '陽性 (+)'}`);
+      maskedLines.push(`・尿糖: ${us === '-' ? '陰性 正常 🎯' : '陽性 (+) 要受診'}`);
+      items.push({
+        name: '学校検尿: 尿糖',
+        compare: `検査結果: <strong>${us}</strong> ｜ 推奨: <strong>（-）陰性</strong>`,
+        badge: us === '-' ? 'gap-achieved' : 'gap-alert',
+        badgeText: us === '-' ? '陰性 (-) 正常 🎯' : '陽性 (+) 要受診',
+        tip: us === '-' ? '異常なしです✨' : 'ジュースやお菓子の過剰摂取を控え、小児科等で詳しい検査を受けましょう。'
+      });
+
+      if (us === '+') {
+        prescriptions.push('🍚 <strong>学校検尿で尿糖陽性:</strong> ジュースやお菓子の摂りすぎに注意し、小児科での相談・検査をおすすめします。');
+      }
+
     } else {
-      laurerDiffText = `目標の<strong>【${targetLauterName}】</strong>ぴったりです！🎉`;
-    }
+      // ==========================================
+      // 👔 2. 成人モード ＆ 🏠 自宅計測モード
+      // ==========================================
+      const goalEl = document.getElementById('weight_goal_type');
+      const goalType = goalEl ? goalEl.value : 'standard';
 
-    dietCard.innerHTML = `
-      <div class="diet-target-title">🎒 学校健診・成長期 発育チェック</div>
-      <div style="font-size: 0.9rem; color: #831843; margin-bottom: 6px;">
-        実測: 身長 <strong>${h}cm</strong>・体重 <strong>${w}kg</strong> ｜ ローレル指数: <strong>${lauter.toFixed(1)}</strong>【${判定}】
-      </div>
-      <div style="font-size: 0.85rem; color: #9d174d; margin-bottom: 6px;">${laurerDiffText}</div>
-    `;
+      let targetW = null;
+      let targetShort = '標準 BMI22';
+      let targetName = '標準体重 (BMI 22)';
+      if (h) {
+        const standardW = (22 * Math.pow(h / 100, 2)).toFixed(1);
+        const beautyW = (20 * Math.pow(h / 100, 2)).toFixed(1);
+        const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
 
-    rawLines.push(`・ローレル指数: ${lauter.toFixed(1)} (${判定}) ｜ 実測: ${h}cm / ${w}kg ｜ 目標: ${targetLauterName} (目安: ${targetLaurerW}kg)`);
-    maskedLines.push(`・ローレル指数判定: 【${判定}】 ｜ 目標: ${targetLauterName}`);
-
-    items.push({
-      name: `体型目標 (${targetLauterShort})`,
-      compare: `実測: <strong>${lauter.toFixed(1)}</strong> (体重:${w}kg) ｜ 目標: <strong>${targetLauterVal}</strong> (目安:${targetLaurerW}kg)`,
-      badge: badgeCls,
-      badgeText: badgeTxt,
-      tip: laurer >= 160 ? 'ジュースをお茶に変え、夜遅い間食を控えて元気に外遊びしましょう🏀' : '成長期はしっかり食べて元気に体を動かすことが一番の健康です✨'
-    });
-
-    const vr = (document.getElementById('vision_r') && document.getElementById('vision_r').value) || 'A';
-    const vl = (document.getElementById('vision_l') && document.getElementById('vision_l').value) || 'A';
-    rawLines.push(`・視力: 右 ${vr} / 左 ${vl}`);
-    maskedLines.push(`・視力: 右 ${vr} / 左 ${vl}`);
-    items.push({
-      name: '視力検査 (右 / 左)',
-      compare: `右: <strong>${vr}</strong> ｜ 左: <strong>${vl}</strong>`,
-      badge: (vr === 'A' && vl === 'A') ? 'gap-achieved' : 'gap-warning',
-      badgeText: (vr === 'A' && vl === 'A') ? '良好 (1.0以上)' : '要観察・受診',
-      tip: (vr !== 'A' || vl !== 'A') ? '黒板が見えにくい場合は眼科での再検査や眼鏡調整を検討してください👓' : '良好です！'
-    });
-
-    const up = (document.getElementById('urine_protein') && document.getElementById('urine_protein').value) || '-';
-    let upBadge = 'gap-achieved';
-    let upText = '陰性 (-) 正常 🎯';
-    if (up === '+-') { upBadge = 'gap-warning'; upText = '偽陽性 (±) 要観察'; }
-    else if (up === '+' || up === '2+') { upBadge = 'gap-alert'; upText = `陽性 (${up}) 要精査`; }
-
-    rawLines.push(`・尿タンパク: ${up} (${upText})`);
-    maskedLines.push(`・尿タンパク: ${upText}`);
-    items.push({
-      name: '学校検尿: 尿タンパク',
-      compare: `検査結果: <strong>${up}</strong> ｜ 推奨: <strong>（-）陰性</strong>`,
-      badge: upBadge,
-      badgeText: upText,
-      tip: up === '-' ? '異常なしです✨' : '激しい運動や発熱の影響もありますが、陽性が続く場合は医療機関で再検査を受けましょう。'
-    });
-
-    if (up === '+' || up === '2+') {
-      prescriptions.push('💧 <strong>学校検尿で尿タンパク陽性:</strong> 激しい運動を控え、医療機関での再検査（早朝尿検査）を受けましょう。');
-    }
-
-    const us = (document.getElementById('urine_sugar') && document.getElementById('urine_sugar').value) || '-';
-    rawLines.push(`・尿糖: ${us === '-' ? '陰性 (-)' : '陽性 (+)'}`);
-    maskedLines.push(`・尿糖: ${us === '-' ? '陰性 正常 🎯' : '陽性 (+) 要受診'}`);
-    items.push({
-      name: '学校検尿: 尿糖',
-      compare: `検査結果: <strong>${us}</strong> ｜ 推奨: <strong>（-）陰性</strong>`,
-      badge: us === '-' ? 'gap-achieved' : 'gap-alert',
-      badgeText: us === '-' ? '陰性 (-) 正常 🎯' : '陽性 (+) 要受診',
-      tip: us === '-' ? '異常なしです✨' : 'ジュースやお菓子の過剰摂取を控え、小児科等で詳しい検査を受けましょう。'
-    });
-
-    if (us === '+') {
-      prescriptions.push('🍚 <strong>学校検尿で尿糖陽性:</strong> ジュースやお菓子の摂りすぎに注意し、小児科での相談・検査をおすすめします。');
-    }
-
-  } else {
-    // ==========================================
-    // 👔 2. 成人モード ＆ 🏠 自宅計測モード
-    // ==========================================
-    let targetW = null;
-    let targetShort = '標準 BMI22';
-    let targetName = '標準体重 (BMI 22)';
-    if (h) {
-      const standardW = (22 * Math.pow(h / 100, 2)).toFixed(1);
-      const beautyW = (20 * Math.pow(h / 100, 2)).toFixed(1);
-      const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
-
-      targetW = parseFloat(standardW);
-      if (goalType === 'beauty' && currentMode === 'adult') { 
-        targetW = parseFloat(beautyW); 
-        targetShort = '美容 BMI20';
-        targetName = '美容体重 (BMI 20)'; 
+        targetW = parseFloat(standardW);
+        if (goalType === 'beauty' && currentMode === 'adult') { 
+          targetW = parseFloat(beautyW); 
+          targetShort = '美容 BMI20';
+          targetName = '美容体重 (BMI 20)'; 
+        }
+        if (goalType === 'model' && currentMode === 'adult') { 
+          targetW = parseFloat(modelW); 
+          targetShort = 'モデル BMI18.5';
+          targetName = 'モデル体重 (BMI 18.5)'; 
+        }
       }
-      if (goalType === 'model' && currentMode === 'adult') { 
-        targetW = parseFloat(modelW); 
-        targetShort = 'モデル BMI18.5';
-        targetName = 'モデル体重 (BMI 18.5)'; 
-      }
-    }
 
-    let dailyDeficit = 350;
-    if (!isNaN(age) && age > 0 && targetW && currentMode === 'adult') {
-      let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
-      let currentTdee = Math.round(currentBmr * act);
+      let dailyDeficit = 350;
+      if (!isNaN(age) && age > 0 && targetW && currentMode === 'adult' && calCard) {
+        let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
+        let currentTdee = Math.round(currentBmr * act);
 
-      let targetBmr = Math.round((10 * targetW) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
-      let targetTdee = Math.round(targetBmr * act);
+        let targetBmr = Math.round((10 * targetW) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
+        let targetTdee = Math.round(targetBmr * act);
 
-      let dietCal = Math.min(currentTdee - 350, targetTdee);
-      dietCal = Math.max(currentBmr, Math.round(dietCal));
-      dailyDeficit = Math.max(100, currentTdee - dietCal);
+        let dietCal = Math.min(currentTdee - 350, targetTdee);
+        dietCal = Math.max(currentBmr, Math.round(dietCal));
+        dailyDeficit = Math.max(100, currentTdee - dietCal);
 
-      let pGrams = Math.round(w * 1.0);
-      let pCal = pGrams * 4;
-      let fCal = Math.round(dietCal * 0.225);
-      let fGrams = Math.round(fCal / 9);
-      let cCal = Math.max(0, dietCal - pCal - fCal);
-      let cGrams = Math.round(cCal / 4);
+        let pGrams = Math.round(w * 1.0);
+        let pCal = pGrams * 4;
+        let fCal = Math.round(dietCal * 0.225);
+        let fGrams = Math.round(fCal / 9);
+        let cCal = Math.max(0, dietCal - pCal - fCal);
+        let cGrams = Math.round(cCal / 4);
 
-      calCard.innerHTML = `
-        <div class="calorie-title">🔥 エネルギー消費 & 推奨摂取カロリー（${targetName} 連動）</div>
-        <div style="font-size: 0.88rem; color: #713f12;">
-          活動量（レベル${act}）と目指す<strong>【${targetName}】</strong>に到達・維持するためのカロリー設計です。
-        </div>
-        <div class="calorie-grid">
-          <div class="calorie-box">
-            <div class="calorie-box-val">${dietCal} <span style="font-size:0.8rem;">kcal</span></div>
-            <div class="calorie-box-lbl">🎯 減量推奨カロリー<br>(${targetName}への移行期)</div>
+        calCard.innerHTML = `
+          <div class="calorie-title">🔥 エネルギー消費 & 推奨摂取カロリー（${targetName} 連動）</div>
+          <div style="font-size: 0.88rem; color: #713f12;">
+            活動量（レベル${act}）と目指す<strong>【${targetName}】</strong>に到達・維持するためのカロリー設計です。
           </div>
-          <div class="calorie-box">
-            <div class="calorie-box-val">${targetTdee} <span style="font-size:0.8rem;">kcal</span></div>
-            <div class="calorie-box-lbl">✨ ${targetName}維持カロリー<br>(目標達成後のキープ目安)</div>
+          <div class="calorie-grid">
+            <div class="calorie-box">
+              <div class="calorie-box-val">${dietCal} <span style="font-size:0.8rem;">kcal</span></div>
+              <div class="calorie-box-lbl">🎯 減量推奨カロリー<br>(${targetName}への移行期)</div>
+            </div>
+            <div class="calorie-box">
+              <div class="calorie-box-val">${targetTdee} <span style="font-size:0.8rem;">kcal</span></div>
+              <div class="calorie-box-lbl">✨ ${targetName}維持カロリー<br>(目標達成後のキープ目安)</div>
+            </div>
+            <div class="calorie-box">
+              <div class="calorie-box-val">${currentBmr} <span style="font-size:0.8rem;">kcal</span></div>
+              <div class="calorie-box-lbl">⚠️ 現在の基礎代謝 (下限)<br>(これ以下は筋肉減少)</div>
+            </div>
           </div>
-          <div class="calorie-box">
-            <div class="calorie-box-val">${currentBmr} <span style="font-size:0.8rem;">kcal</span></div>
-            <div class="calorie-box-lbl">⚠️ 現在の基礎代謝 (下限)<br>(これ以下は筋肉減少)</div>
+
+          <div class="pfc-box">
+            <div class="pfc-item">🥩 タンパク質 (P): <strong>${pGrams} g</strong> (${pCal}kcal)</div>
+            <div class="pfc-item">🥑 脂質 (F): <strong>${fGrams} g</strong> (${fCal}kcal)</div>
+            <div class="pfc-item">🍚 炭水化物 (C): <strong>${cGrams} g</strong> (${cCal}kcal)</div>
           </div>
-        </div>
 
-        <div class="pfc-box">
-          <div class="pfc-item">🥩 タンパク質 (P): <strong>${pGrams} g</strong> (${pCal}kcal)</div>
-          <div class="pfc-item">🥑 脂質 (F): <strong>${fGrams} g</strong> (${fCal}kcal)</div>
-          <div class="pfc-item">🍚 炭水化物 (C): <strong>${cGrams} g</strong> (${cCal}kcal)</div>
-        </div>
-
-        <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-          <span>🥤 <strong>飲み物の補給目標:</strong> 約 <strong>${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L / 日</strong> <span style="color:#64748b;">(食事込総量:約 ${(totalWater/1000).toFixed(1)}L)</span></span>
-          <span style="color:#854d0e;">⚖️ <strong>アンダーカロリー:</strong> 約 <strong>-${dailyDeficit} kcal/日</strong></span>
-        </div>
-      `;
-      calCard.style.display = 'block';
-
-      rawLines.push(`・減量推奨カロリー: ${dietCal} kcal/日 (維持: ${targetTdee} kcal, 基礎代謝: ${currentBmr} kcal)`);
-      rawLines.push(`・PFCバランス目安: P ${pGrams}g / F ${fGrams}g / C ${cGrams}g`);
-      rawLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日 (食事込み総水分: 約 ${(totalWater/1000).toFixed(1)} L)`);
-
-      maskedLines.push(`・減量推奨カロリー: ${dietCal} kcal/日`);
-      maskedLines.push(`・PFCバランス目安: P ${pGrams}g / F ${fGrams}g / C ${cGrams}g`);
-      maskedLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
-
-    } else if (!isNaN(age) && age > 0 && currentMode === 'simple') {
-      let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
-      let currentTdee = Math.round(currentBmr * 1.5);
-      let dietCal = Math.max(currentBmr, currentTdee - 350);
-
-      calCard.innerHTML = `
-        <div class="calorie-title">🏠 自宅計測モード 推奨カロリー設計</div>
-        <div class="calorie-grid">
-          <div class="calorie-box">
-            <div class="calorie-box-val">${dietCal} <span style="font-size:0.8rem;">kcal</span></div>
-            <div class="calorie-box-lbl">🎯 減量推奨カロリー<br>(標準ペース)</div>
-          </div>
-          <div class="calorie-box">
-            <div class="calorie-box-val">${currentTdee} <span style="font-size:0.8rem;">kcal</span></div>
-            <div class="calorie-box-lbl">⚖️ 維持カロリー<br>(活動量:普通)</div>
-          </div>
-          <div class="calorie-box">
-            <div class="calorie-box-val">${currentBmr} <span style="font-size:0.8rem;">kcal</span></div>
-            <div class="calorie-box-lbl">⚠️ 基礎代謝 (下限)</div>
-          </div>
-        </div>
-        <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px;">
-          🥤 <strong>飲み物の補給目標:</strong> 約 <strong>${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L / 日</strong> <span style="color:#64748b;">(食事込総量:約 ${(totalWater/1000).toFixed(1)}L)</span>
-        </div>
-      `;
-      calCard.style.display = 'block';
-
-      rawLines.push(`・減量推奨カロリー: ${dietCal} kcal/日 ｜ 水分補給目標(飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
-      maskedLines.push(`・減量推奨カロリー: ${dietCal} kcal/日 ｜ 水分補給目標(飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
-    }
-
-    if (targetW && currentMode === 'adult') {
-      const bmi = w / Math.pow(h / 100, 2);
-      const diff = parseFloat((w - targetW).toFixed(1));
-      
-      let dietText = '';
-      if (diff > 0) {
-        dietText = `現在の体重 <strong>${w}kg</strong> は、目標の<strong>【${targetName}：${targetW}kg】</strong>まで <span style="color:#be185d; font-size:1.1rem; font-weight:bold;">あと -${diff} kg</span> の減量が必要です。`;
-
-        const totalCaloriesNeeded = diff * 7200;
-        const daysNeeded = Math.round(totalCaloriesNeeded / dailyDeficit);
-        const monthsNeeded = (daysNeeded / 30.4).toFixed(1);
-
-        const targetDate = new Date();
-        targetDate.setDate(targetDate.getDate() + daysNeeded);
-        const targetYear = targetDate.getFullYear();
-        const targetMonth = targetDate.getMonth() + 1;
-
-        roadmapCard.innerHTML = `
-          <div class="roadmap-title">📅 目標達成までのロードマップ（期間目安）</div>
-          <div style="font-size: 0.9rem; color: #14532d; line-height: 1.6;">
-            推奨ペース（1日 -${dailyDeficit}kcal）を継続した場合、<br>
-            あと <span class="roadmap-highlight">約 ${monthsNeeded} ヶ月（約 ${daysNeeded} 日）</span>、
-            <span class="roadmap-highlight">【 ${targetYear}年 ${targetMonth}月頃 】</span>の達成が目安となります✨
+          <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+            <span>🥤 <strong>飲み物の補給目標:</strong> 約 <strong>${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L / 日</strong> <span style="color:#64748b;">(食事込総量:約 ${(totalWater/1000).toFixed(1)}L)</span></span>
+            <span style="color:#854d0e;">⚖️ <strong>アンダーカロリー:</strong> 約 <strong>-${dailyDeficit} kcal/日</strong></span>
           </div>
         `;
-        roadmapCard.style.display = 'block';
-      } else {
-        roadmapCard.style.display = 'none';
-        dietText = `現在の体重 <strong>${w}kg</strong> は、目標の【${targetName}】を達成または下回っています！🎉`;
+        calCard.style.display = 'block';
+
+        rawLines.push(`・減量推奨カロリー: ${dietCal} kcal/日 (維持: ${targetTdee} kcal, 基礎代謝: ${currentBmr} kcal)`);
+        rawLines.push(`・PFCバランス目安: P ${pGrams}g / F ${fGrams}g / C ${cGrams}g`);
+        rawLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日 (食事込み総水分: 約 ${(totalWater/1000).toFixed(1)} L)`);
+
+        maskedLines.push(`・減量推奨カロリー: ${dietCal} kcal/日`);
+        maskedLines.push(`・PFCバランス目安: P ${pGrams}g / F ${fGrams}g / C ${cGrams}g`);
+        maskedLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
+
+      } else if (!isNaN(age) && age > 0 && currentMode === 'simple' && calCard) {
+        let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
+        let currentTdee = Math.round(currentBmr * 1.5);
+        let dietCal = Math.max(currentBmr, currentTdee - 350);
+
+        calCard.innerHTML = `
+          <div class="calorie-title">🏠 自宅計測モード 推奨カロリー設計</div>
+          <div class="calorie-grid">
+            <div class="calorie-box">
+              <div class="calorie-box-val">${dietCal} <span style="font-size:0.8rem;">kcal</span></div>
+              <div class="calorie-box-lbl">🎯 減量推奨カロリー<br>(標準ペース)</div>
+            </div>
+            <div class="calorie-box">
+              <div class="calorie-box-val">${currentTdee} <span style="font-size:0.8rem;">kcal</span></div>
+              <div class="calorie-box-lbl">⚖️ 維持カロリー<br>(活動量:普通)</div>
+            </div>
+            <div class="calorie-box">
+              <div class="calorie-box-val">${currentBmr} <span style="font-size:0.8rem;">kcal</span></div>
+              <div class="calorie-box-lbl">⚠️ 基礎代謝 (下限)</div>
+            </div>
+          </div>
+          <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px;">
+            🥤 <strong>飲み物の補給目標:</strong> 約 <strong>${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L / 日</strong> <span style="color:#64748b;">(食事込総量:約 ${(totalWater/1000).toFixed(1)}L)</span>
+          </div>
+        `;
+        calCard.style.display = 'block';
+
+        rawLines.push(`・減量推奨カロリー: ${dietCal} kcal/日 ｜ 水分補給目標(飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
+        maskedLines.push(`・減量推奨カロリー: ${dietCal} kcal/日 ｜ 水分補給目標(飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
       }
 
-      dietCard.innerHTML = `
-        <div class="diet-target-title">👗 体型・ダイエット進捗サマリー</div>
-        <div style="font-size: 0.9rem; color: #831843; margin-bottom: 8px;">${dietText}</div>
-      `;
+      if (targetW && currentMode === 'adult') {
+        const bmi = w / Math.pow(h / 100, 2);
+        const diff = parseFloat((w - targetW).toFixed(1));
+        
+        let dietText = '';
+        if (diff > 0) {
+          dietText = `現在の体重 <strong>${w}kg</strong> は、目標の<strong>【${targetName}：${targetW}kg】</strong>まで <span style="color:#be185d; font-size:1.1rem; font-weight:bold;">あと -${diff} kg</span> の減量が必要です。`;
 
-      rawLines.push(`・体重進捗: 実測 ${w}kg (BMI ${bmi.toFixed(1)}) ｜ 目標 ${targetName} (${targetW}kg / 差分: ${diff > 0 ? '-' + diff + 'kg' : '達成'})`);
-      maskedLines.push(`・体型目標: 【${targetName}】 (進捗: ${diff <= 0 ? '目標達成 🎯' : '減量中'})`);
+          const totalCaloriesNeeded = diff * 7200;
+          const daysNeeded = Math.round(totalCaloriesNeeded / dailyDeficit);
+          const monthsNeeded = (daysNeeded / 30.4).toFixed(1);
 
-      items.push({
-        name: `体型目標 (${targetShort})`,
-        compare: `実測: <strong>${w} kg</strong> (BMI: ${bmi.toFixed(1)}) ｜ 選択目標: <strong>${targetW} kg</strong>`,
-        badge: diff <= 0 ? 'gap-achieved' : (diff > 4 ? 'gap-alert' : 'gap-warning'),
-        badgeText: diff <= 0 ? '目標達成 🎯' : `あと -${diff} kg`,
-        tip: '算出した推奨摂取カロリーと適度なウォーキングをベースに進めましょう🏃‍♂️'
-      });
-    } else if (currentMode === 'simple') {
-      const bmi = w / Math.pow(h / 100, 2);
-      dietCard.innerHTML = `
-        <div class="diet-target-title">👗 簡易体型サマリー</div>
-        <div style="font-size: 0.9rem; color: #831843;">現在のBMI: <strong>${bmi.toFixed(1)}</strong> (身長:${h}cm / 体重:${w}kg)</div>
-      `;
-      rawLines.push(`・体型: 身長 ${h}cm / 体重 ${w}kg (BMI ${bmi.toFixed(1)})`);
-      maskedLines.push(`・体型評価: BMI ${bmi.toFixed(1)}`);
-    }
+          const targetDate = new Date();
+          targetDate.setDate(targetDate.getDate() + daysNeeded);
+          const targetYear = targetDate.getFullYear();
+          const targetMonth = targetDate.getMonth() + 1;
 
-    // 血圧（成人・自宅計測共通）
-    const sbp = parseFloat(document.getElementById('sbp') ? document.getElementById('sbp').value : NaN);
-    const dbp = parseFloat(document.getElementById('dbp') ? document.getElementById('dbp').value : NaN);
-    if (!isNaN(sbp) || !isNaN(dbp)) {
-      const maxDiff = Math.max(!isNaN(sbp) ? sbp - 120 : 0, !isNaN(dbp) ? dbp - 80 : 0);
-      rawLines.push(`・血圧: ${sbp || '-'}/${dbp || '-'} mmHg (推奨 120/80未満)`);
-      maskedLines.push(`・血圧判定: ${maxDiff <= 0 ? '正常血圧 🎯' : '目標超過'}`);
-      items.push({
-        name: '血圧 (収縮期 / 拡張期)',
-        compare: `実測: <strong>${sbp || '-'} / ${dbp || '-'} mmHg</strong> ｜ 推奨: <strong>120/80 未満</strong>`,
-        badge: maxDiff <= 0 ? 'gap-achieved' : (maxDiff >= 15 ? 'gap-alert' : 'gap-warning'),
-        badgeText: maxDiff <= 0 ? '正常血圧 🎯' : `目標まで +${maxDiff} mmHg`,
-        tip: '減塩と有酸素運動が効果的です🧂'
-      });
-      if ((!isNaN(sbp) && sbp >= 130) || (!isNaN(dbp) && dbp >= 85)) {
-        prescriptions.push('💓 <strong>血圧高めのダイエット注意点:</strong><br>息を止めて力む筋トレは避け、ウォーキング等の有酸素運動を中心に行いましょう。食事は減塩を徹底し、カリウム（野菜類）を意識してください。');
-      }
-    }
-
-    // 👔 成人・一般モードのみ血液検査項目を処理
-    if (currentMode === 'adult') {
-      const ldl = parseFloat(document.getElementById('ldl') ? document.getElementById('ldl').value : NaN);
-      const tg = parseFloat(document.getElementById('tg') ? document.getElementById('tg').value : NaN);
-      const bs = parseFloat(document.getElementById('bs') ? document.getElementById('bs').value : NaN);
-      const hba1c = parseFloat(document.getElementById('hba1c') ? document.getElementById('hba1c').value : NaN);
-      const alt = parseFloat(document.getElementById('alt') ? document.getElementById('alt').value : NaN);
-      const gtp = parseFloat(document.getElementById('gtp') ? document.getElementById('gtp').value : NaN);
-      const cre = parseFloat(document.getElementById('creatinine') ? document.getElementById('creatinine').value : NaN);
-      const ua = parseFloat(document.getElementById('ua') ? document.getElementById('ua').value : NaN);
-
-      if (!isNaN(cre) && !isNaN(age) && age > 0) {
-        let egfr = 194 * Math.pow(cre, -1.094) * Math.pow(age, -0.287);
-        if (gender === 'female') egfr *= 0.739;
-        egfr = parseFloat(egfr.toFixed(1));
-
-        if (egfr < 60 || cre > (gender === 'male' ? 1.0 : 0.7)) {
-          prescriptions.push('💧 <strong>腎機能ケア中のダイエット注意点:</strong><br>プロテインの過剰摂取は控え、<strong>減塩（6g未満）と水分補給（2〜3L）</strong>を軸にしてください。');
+          if (roadmapCard) {
+            roadmapCard.innerHTML = `
+              <div class="roadmap-title">📅 目標達成までのロードマップ（期間目安）</div>
+              <div style="font-size: 0.9rem; color: #14532d; line-height: 1.6;">
+                推奨ペース（1日 -${dailyDeficit}kcal）を継続した場合、<br>
+                あと <span class="roadmap-highlight">約 ${monthsNeeded} ヶ月（約 ${daysNeeded} 日）</span>、
+                <span class="roadmap-highlight">【 ${targetYear}年 ${targetMonth}月頃 】</span>の達成が目安となります✨
+              </div>
+            `;
+            roadmapCard.style.display = 'block';
+          }
+        } else {
+          if (roadmapCard) roadmapCard.style.display = 'none';
+          dietText = `現在の体重 <strong>${w}kg</strong> は、目標の【${targetName}】を達成または下回っています！🎉`;
         }
 
-        rawLines.push(`・腎機能 eGFR: ${egfr} (CRE: ${cre} mg/dL) ｜ 推奨 60.0以上`);
-        maskedLines.push(`・腎機能判定: ${egfr >= 60 ? '正常域 🎯' : '低下'}`);
+        if (dietCard) {
+          dietCard.innerHTML = `
+            <div class="diet-target-title">👗 体型・ダイエット進捗サマリー</div>
+            <div style="font-size: 0.9rem; color: #831843; margin-bottom: 8px;">${dietText}</div>
+          `;
+        }
+
+        rawLines.push(`・体重進捗: 実測 ${w}kg (BMI ${bmi.toFixed(1)}) ｜ 目標 ${targetName} (${targetW}kg / 差分: ${diff > 0 ? '-' + diff + 'kg' : '達成'})`);
+        maskedLines.push(`・体型目標: 【${targetName}】 (進捗: ${diff <= 0 ? '目標達成 🎯' : '減量中'})`);
 
         items.push({
-          name: '腎機能 (eGFR)',
-          compare: `実測: <strong>${egfr} mL/分/1.73㎡</strong> (CRE: ${cre}) ｜ 推奨: <strong>60.0 以上</strong>`,
-          badge: egfr >= 60 ? 'gap-achieved' : (egfr >= 50 ? 'gap-warning' : 'gap-alert'),
-          badgeText: egfr >= 60 ? '正常域 🎯' : `低下 (目標60まで +${(60 - egfr).toFixed(1)})`,
-          tip: '腎臓保護には減塩・十分な水分補給が最優先です。'
+          name: `体型目標 (${targetShort})`,
+          compare: `実測: <strong>${w} kg</strong> (BMI: ${bmi.toFixed(1)}) ｜ 選択目標: <strong>${targetW} kg</strong>`,
+          badge: diff <= 0 ? 'gap-achieved' : (diff > 4 ? 'gap-alert' : 'gap-warning'),
+          badgeText: diff <= 0 ? '目標達成 🎯' : `あと -${diff} kg`,
+          tip: '算出した推奨摂取カロリーと適度なウォーキングをベースに進めましょう🏃‍♂️'
         });
+      } else if (currentMode === 'simple' && dietCard) {
+        const bmi = w / Math.pow(h / 100, 2);
+        dietCard.innerHTML = `
+          <div class="diet-target-title">👗 簡易体型サマリー</div>
+          <div style="font-size: 0.9rem; color: #831843;">現在のBMI: <strong>${bmi.toFixed(1)}</strong> (身長:${h}cm / 体重:${w}kg)</div>
+        `;
+        rawLines.push(`・体型: 身長 ${h}cm / 体重 ${w}kg (BMI ${bmi.toFixed(1)})`);
+        maskedLines.push(`・体型評価: BMI ${bmi.toFixed(1)}`);
       }
 
-      const gtpTarget = gender === 'male' ? 50 : 30;
-      if ((!isNaN(alt) && alt > 30) || (!isNaN(gtp) && gtp > gtpTarget)) {
-        prescriptions.push('🍺 <strong>肝機能高め（脂肪肝傾向）:</strong> 夜遅い炭水化物・アルコールを控えましょう。');
-      }
-      if (!isNaN(alt) || !isNaN(gtp)) {
-        const isWarn = (!isNaN(alt) && alt > 30) || (!isNaN(gtp) && gtp > gtpTarget);
-        rawLines.push(`・肝機能: ALT ${alt || '-'} / γ-GTP ${gtp || '-'} U/L`);
-        maskedLines.push(`・肝機能判定: ${!isWarn ? '正常域 🎯' : '目標超過'}`);
+      // 血圧（成人・自宅計測共通）
+      const sbp = parseFloat(document.getElementById('sbp') ? document.getElementById('sbp').value : NaN);
+      const dbp = parseFloat(document.getElementById('dbp') ? document.getElementById('dbp').value : NaN);
+      if (!isNaN(sbp) || !isNaN(dbp)) {
+        const maxDiff = Math.max(!isNaN(sbp) ? sbp - 120 : 0, !isNaN(dbp) ? dbp - 80 : 0);
+        rawLines.push(`・血圧: ${sbp || '-'}/${dbp || '-'} mmHg (推奨 120/80未満)`);
+        maskedLines.push(`・血圧判定: ${maxDiff <= 0 ? '正常血圧 🎯' : '目標超過'}`);
         items.push({
-          name: '肝機能 (ALT / γ-GTP)',
-          compare: `実測: <strong>ALT:${alt || '-'} / γ-GTP:${gtp || '-'}</strong> ｜ 推奨: <strong>ALT30以下 / γ-GTP${gtpTarget}以下</strong>`,
-          badge: !isWarn ? 'gap-achieved' : 'gap-warning',
-          badgeText: !isWarn ? '正常域 🎯' : '目標超過',
-          tip: '夜間の糖質控えめとアルコール調整が効果的です。'
+          name: '血圧 (収縮期 / 拡張期)',
+          compare: `実測: <strong>${sbp || '-'} / ${dbp || '-'} mmHg</strong> ｜ 推奨: <strong>120/80 未満</strong>`,
+          badge: maxDiff <= 0 ? 'gap-achieved' : (maxDiff >= 15 ? 'gap-alert' : 'gap-warning'),
+          badgeText: maxDiff <= 0 ? '正常血圧 🎯' : `目標まで +${maxDiff} mmHg`,
+          tip: '減塩と有酸素運動が効果的です🧂'
         });
+        if ((!isNaN(sbp) && sbp >= 130) || (!isNaN(dbp) && dbp >= 85)) {
+          prescriptions.push('💓 <strong>血圧高めのダイエット注意点:</strong><br>息を止めて力む筋トレは避け、ウォーキング等の有酸素運動を中心に行いましょう。食事は減塩を徹底し、カリウム（野菜類）を意識してください。');
+        }
       }
 
-      if (!isNaN(ua) && ua > 6.0) {
-        prescriptions.push('🦶 <strong>尿酸値高め:</strong> 急激な減量を避け、水分をしっかり摂りましょう。');
-      }
-      if (!isNaN(ua)) {
-        const diff = (ua - 6.0).toFixed(1);
-        rawLines.push(`・尿酸値: ${ua} mg/dL ｜ 理想目標 6.0以下`);
-        maskedLines.push(`・尿酸値判定: ${ua <= 6.0 ? '理想域 🎯' : '高め'}`);
-        items.push({
-          name: '尿酸値 (UA)',
-          compare: `実測: <strong>${ua} mg/dL</strong> ｜ 推奨: <strong>6.0 以下</strong>`,
-          badge: ua <= 6.0 ? 'gap-achieved' : (ua > 7.0 ? 'gap-alert' : 'gap-warning'),
-          badgeText: ua <= 6.0 ? '理想域 🎯' : `あと -${diff} mg/dL`,
-          tip: '水分補給を徹底し、プリン体・果糖を控えましょう🥤'
-        });
-      }
+      // 👔 成人・一般モードのみ血液検査項目を処理
+      if (currentMode === 'adult') {
+        const ldl = parseFloat(document.getElementById('ldl') ? document.getElementById('ldl').value : NaN);
+        const tg = parseFloat(document.getElementById('tg') ? document.getElementById('tg').value : NaN);
+        const bs = parseFloat(document.getElementById('bs') ? document.getElementById('bs').value : NaN);
+        const hba1c = parseFloat(document.getElementById('hba1c') ? document.getElementById('hba1c').value : NaN);
+        const alt = parseFloat(document.getElementById('alt') ? document.getElementById('alt').value : NaN);
+        const gtp = parseFloat(document.getElementById('gtp') ? document.getElementById('gtp').value : NaN);
+        const cre = parseFloat(document.getElementById('creatinine') ? document.getElementById('creatinine').value : NaN);
+        const ua = parseFloat(document.getElementById('ua') ? document.getElementById('ua').value : NaN);
 
-      if (!isNaN(ldl)) {
-        const diff = ldl - 119;
-        rawLines.push(`・LDLコレステロール: ${ldl} mg/dL ｜ 推奨 119以下`);
-        maskedLines.push(`・LDLコレステロール: ${diff <= 0 ? '基準内 🎯' : '高め'}`);
-        items.push({
-          name: 'LDLコレステロール',
-          compare: `実測: <strong>${ldl} mg/dL</strong> ｜ 推奨: <strong>119 以下</strong>`,
-          badge: diff <= 0 ? 'gap-achieved' : 'gap-warning',
-          badgeText: diff <= 0 ? '基準内 🎯' : `あと -${diff} mg/dL`,
-          tip: '食物繊維や青魚を積極的に摂りましょう🐟'
-        });
-      }
-      if (!isNaN(tg)) {
-        const diff = tg - 149;
-        rawLines.push(`・中性脂肪: ${tg} mg/dL ｜ 推奨 149以下`);
-        maskedLines.push(`・中性脂肪: ${diff <= 0 ? '基準内 🎯' : '高め'}`);
-        items.push({
-          name: '中性脂肪 (TG)',
-          compare: `実測: <strong>${tg} mg/dL</strong> ｜ 推奨: <strong>149 以下</strong>`,
-          badge: diff <= 0 ? 'gap-achieved' : 'gap-warning',
-          badgeText: diff <= 0 ? '基準内 🎯' : `あと -${diff} mg/dL`,
-          tip: '夜遅い主食やお酒を控えめにしましょう。'
-        });
-      }
-      if (!isNaN(bs) || !isNaN(hba1c)) {
-        const isHigh = (!isNaN(hba1c) && hba1c > 5.5) || (!isNaN(bs) && bs > 99);
-        const desc = [];
-        if (!isNaN(bs)) desc.push(`血糖値:${bs}`);
-        if (!isNaN(hba1c)) desc.push(`HbA1c:${hba1c}%`);
-        rawLines.push(`・糖代謝: ${desc.join(' / ')}`);
-        maskedLines.push(`・糖代謝判定: ${!isHigh ? '正常域 🎯' : '高め'}`);
-        items.push({
-          name: '糖代謝',
-          compare: `実測: <strong>${desc.join(' ｜ ')}</strong>`,
-          badge: !isHigh ? 'gap-achieved' : 'gap-warning',
-          badgeText: !isHigh ? '正常域 🎯' : '高め',
-          tip: '食後の散歩や野菜ファーストが効果的です🚶'
-        });
+        if (!isNaN(cre) && !isNaN(age) && age > 0) {
+          let egfr = 194 * Math.pow(cre, -1.094) * Math.pow(age, -0.287);
+          if (gender === 'female') egfr *= 0.739;
+          egfr = parseFloat(egfr.toFixed(1));
+
+          if (egfr < 60 || cre > (gender === 'male' ? 1.0 : 0.7)) {
+            prescriptions.push('💧 <strong>腎機能ケア中のダイエット注意点:</strong><br>プロテインの過剰摂取は控え、<strong>減塩（6g未満）と水分補給（2〜3L）</strong>を軸にしてください。');
+          }
+
+          rawLines.push(`・腎機能 eGFR: ${egfr} (CRE: ${cre} mg/dL) ｜ 推奨 60.0以上`);
+          maskedLines.push(`・腎機能判定: ${egfr >= 60 ? '正常域 🎯' : '低下'}`);
+
+          items.push({
+            name: '腎機能 (eGFR)',
+            compare: `実測: <strong>${egfr} mL/分/1.73㎡</strong> (CRE: ${cre}) ｜ 推奨: <strong>60.0 以上</strong>`,
+            badge: egfr >= 60 ? 'gap-achieved' : (egfr >= 50 ? 'gap-warning' : 'gap-alert'),
+            badgeText: egfr >= 60 ? '正常域 🎯' : `低下 (目標60まで +${(60 - egfr).toFixed(1)})`,
+            tip: '腎臓保護には減塩・十分な水分補給が最優先です。'
+          });
+        }
+
+        const gtpTarget = gender === 'male' ? 50 : 30;
+        if ((!isNaN(alt) && alt > 30) || (!isNaN(gtp) && gtp > gtpTarget)) {
+          prescriptions.push('🍺 <strong>肝機能高め（脂肪肝傾向）:</strong> 夜遅い炭水化物・アルコールを控えましょう。');
+        }
+        if (!isNaN(alt) || !isNaN(gtp)) {
+          const isWarn = (!isNaN(alt) && alt > 30) || (!isNaN(gtp) && gtp > gtpTarget);
+          rawLines.push(`・肝機能: ALT ${alt || '-'} / γ-GTP ${gtp || '-'} U/L`);
+          maskedLines.push(`・肝機能判定: ${!isWarn ? '正常域 🎯' : '目標超過'}`);
+          items.push({
+            name: '肝機能 (ALT / γ-GTP)',
+            compare: `実測: <strong>ALT:${alt || '-'} / γ-GTP:${gtp || '-'}</strong> ｜ 推奨: <strong>ALT30以下 / γ-GTP${gtpTarget}以下</strong>`,
+            badge: !isWarn ? 'gap-achieved' : 'gap-warning',
+            badgeText: !isWarn ? '正常域 🎯' : '目標超過',
+            tip: '夜間の糖質控えめとアルコール調整が効果的です。'
+          });
+        }
+
+        if (!isNaN(ua) && ua > 6.0) {
+          prescriptions.push('🦶 <strong>尿酸値高め:</strong> 急激な減量を避け、水分をしっかり摂りましょう。');
+        }
+        if (!isNaN(ua)) {
+          const diff = (ua - 6.0).toFixed(1);
+          rawLines.push(`・尿酸値: ${ua} mg/dL ｜ 理想目標 6.0以下`);
+          maskedLines.push(`・尿酸値判定: ${ua <= 6.0 ? '理想域 🎯' : '高め'}`);
+          items.push({
+            name: '尿酸値 (UA)',
+            compare: `実測: <strong>${ua} mg/dL</strong> ｜ 推奨: <strong>6.0 以下</strong>`,
+            badge: ua <= 6.0 ? 'gap-achieved' : (ua > 7.0 ? 'gap-alert' : 'gap-warning'),
+            badgeText: ua <= 6.0 ? '理想域 🎯' : `あと -${diff} mg/dL`,
+            tip: '水分補給を徹底し、プリン体・果糖を控えましょう🥤'
+          });
+        }
+
+        if (!isNaN(ldl)) {
+          const diff = ldl - 119;
+          rawLines.push(`・LDLコレステロール: ${ldl} mg/dL ｜ 推奨 119以下`);
+          maskedLines.push(`・LDLコレステロール: ${diff <= 0 ? '基準内 🎯' : '高め'}`);
+          items.push({
+            name: 'LDLコレステロール',
+            compare: `実測: <strong>${ldl} mg/dL</strong> ｜ 推奨: <strong>119 以下</strong>`,
+            badge: diff <= 0 ? 'gap-achieved' : 'gap-warning',
+            badgeText: diff <= 0 ? '基準内 🎯' : `あと -${diff} mg/dL`,
+            tip: '食物繊維や青魚を積極的に摂りましょう🐟'
+          });
+        }
+        if (!isNaN(tg)) {
+          const diff = tg - 149;
+          rawLines.push(`・中性脂肪: ${tg} mg/dL ｜ 推奨 149以下`);
+          maskedLines.push(`・中性脂肪: ${diff <= 0 ? '基準内 🎯' : '高め'}`);
+          items.push({
+            name: '中性脂肪 (TG)',
+            compare: `実測: <strong>${tg} mg/dL</strong> ｜ 推奨: <strong>149 以下</strong>`,
+            badge: diff <= 0 ? 'gap-achieved' : 'gap-warning',
+            badgeText: diff <= 0 ? '基準内 🎯' : `あと -${diff} mg/dL`,
+            tip: '夜遅い主食やお酒を控えめにしましょう。'
+          });
+        }
+        if (!isNaN(bs) || !isNaN(hba1c)) {
+          const isHigh = (!isNaN(hba1c) && hba1c > 5.5) || (!isNaN(bs) && bs > 99);
+          const desc = [];
+          if (!isNaN(bs)) desc.push(`血糖値:${bs}`);
+          if (!isNaN(hba1c)) desc.push(`HbA1c:${hba1c}%`);
+          rawLines.push(`・糖代謝: ${desc.join(' / ')}`);
+          maskedLines.push(`・糖代謝判定: ${!isHigh ? '正常域 🎯' : '高め'}`);
+          items.push({
+            name: '糖代謝',
+            compare: `実測: <strong>${desc.join(' ｜ ')}</strong>`,
+            badge: !isHigh ? 'gap-achieved' : 'gap-warning',
+            badgeText: !isHigh ? '正常域 🎯' : '高め',
+            tip: '食後の散歩や野菜ファーストが効果的です🚶'
+          });
+        }
       }
     }
+
+    const presCard = document.getElementById('special-prescription-card');
+    const presList = document.getElementById('special-prescription-list');
+    if (prescriptions.length > 0 && presList && presCard) {
+      presList.innerHTML = prescriptions.map(p => `<div style="margin-bottom: 4px; line-height: 1.4;">${p}</div>`).join('');
+      presCard.style.display = 'block';
+    } else if (presCard) {
+      presCard.style.display = 'none';
+    }
+
+    const list = document.getElementById('analysis-items');
+    if (list) {
+      list.innerHTML = '';
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'analysis-item';
+        card.innerHTML = `
+          <div class="item-header">
+            <span class="item-name">${item.name}</span>
+            <span class="gap-badge ${item.badge}">${item.badgeText}</span>
+          </div>
+          <div class="metric-compare">${item.compare}</div>
+          <div class="action-tip">💡 <strong>ワンポイント:</strong> ${item.tip}</div>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    latestSummaryData = {
+      raw: rawLines,
+      masked: maskedLines
+    };
+
+    const section = document.getElementById('analysis-section');
+    if (section) {
+      section.style.display = 'block';
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+  } catch (err) {
+    console.error('Analysis Error:', err);
+    alert('【デバッグ情報】分析処理中にエラーが発生しました:\n' + err.name + ': ' + err.message + '\n' + (err.stack || ''));
   }
-
-  const presCard = document.getElementById('special-prescription-card');
-  const presList = document.getElementById('special-prescription-list');
-  if (prescriptions.length > 0) {
-    presList.innerHTML = prescriptions.map(p => `<div style="margin-bottom: 4px; line-height: 1.4;">${p}</div>`).join('');
-    presCard.style.display = 'block';
-  } else {
-    presCard.style.display = 'none';
-  }
-
-  const list = document.getElementById('analysis-items');
-  list.innerHTML = '';
-  items.forEach(item => {
-    const card = document.createElement('div');
-    card.className = 'analysis-item';
-    card.innerHTML = `
-      <div class="item-header">
-        <span class="item-name">${item.name}</span>
-        <span class="gap-badge ${item.badge}">${item.badgeText}</span>
-      </div>
-      <div class="metric-compare">${item.compare}</div>
-      <div class="action-tip">💡 <strong>ワンポイント:</strong> ${item.tip}</div>
-    `;
-    list.appendChild(card);
-  });
-
-  latestSummaryData = {
-    raw: rawLines,
-    masked: maskedLines
-  };
-
-  document.getElementById('analysis-section').style.display = 'block';
 }
 </script>
 </body>
