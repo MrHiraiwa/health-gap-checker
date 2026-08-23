@@ -87,18 +87,6 @@
       display: flex;
       gap: 6px;
     }
-    .toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #f1f5f9;
-      padding: 8px 12px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      font-size: 0.8rem;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
     .btn-sub {
       padding: 4px 8px;
       font-size: 0.75rem;
@@ -401,8 +389,21 @@
       border-radius: 0 6px 6px 0;
       margin-top: 4px;
     }
-    .app-footer {
+    .bottom-toolbar {
       margin-top: 30px;
+      padding: 12px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .app-footer {
+      margin-top: 20px;
       padding-top: 14px;
       border-top: 1px solid var(--border);
       font-size: 0.72rem;
@@ -431,7 +432,7 @@
         max-width: 100%;
         border: none;
       }
-      .privacy-banner, .toolbar, .mode-selector, #health-form, .btn-group, .print-bar, .app-footer, h1, .subtitle {
+      .privacy-banner, .bottom-toolbar, .mode-selector, #health-form, .btn-group, .print-bar, .app-footer, h1, .subtitle {
         display: none !important;
       }
       #analysis-section {
@@ -545,15 +546,6 @@
     <div>
       <strong>完全端末内処理（プライバシー保護）:</strong><br>
       入力データは外部サーバーへ送信されません。すべて端末・ブラウザ内のみで安全に計算・保存されます。
-    </div>
-  </div>
-
-  <div class="toolbar">
-    <span id="save-status">💾 自動保存中</span>
-    <div style="display: flex; gap: 6px;">
-      <button type="button" class="btn-sub" onclick="exportData()">ファイルへ保存 (JSON) 📥</button>
-      <button type="button" class="btn-sub" onclick="document.getElementById('import-file').click()">ファイルから復元 📤</button>
-      <input type="file" id="import-file" style="display:none;" accept=".json" onchange="importData(event)">
     </div>
   </div>
 
@@ -794,6 +786,16 @@
     <div id="analysis-items"></div>
   </div>
 
+  <!-- 💾 デバッグ・バックアップ用ツールバー（ページ最下部） -->
+  <div class="bottom-toolbar">
+    <span style="color: var(--subtext); font-size: 0.75rem;">⚙️ データ管理・バックアップ</span>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" class="btn-sub" onclick="exportData()">ファイルへ保存 (JSON) 📥</button>
+      <button type="button" class="btn-sub" onclick="document.getElementById('import-file').click()">ファイルから復元 📤</button>
+      <input type="file" id="import-file" style="display:none;" accept=".json" onchange="importData(event)">
+    </div>
+  </div>
+
   <footer class="app-footer">
     <div>🔒 <strong>プライバシー保証:</strong> 入力データは端末内でのみ処理・保存され、外部サーバー送信は一切ありません。</div>
     <div style="margin-top: 4px;">
@@ -818,9 +820,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     if (saved._mode) switchMode(saved._mode, false);
     if (Object.keys(saved).length > 0) runAnalysis();
-  } catch (e) {
-    document.getElementById('save-status').innerText = '⚠️ 自動保存無効';
-  }
+  } catch (e) {}
 });
 
 function handleAgeChange() {
@@ -866,7 +866,6 @@ function switchMode(mode, save = true) {
 
   if (save) {
     autoSave();
-    // モード切替時に分析結果が出ている場合は自動再計算して整合性を保つ
     if (document.getElementById('analysis-section').style.display === 'block') {
       runAnalysis();
     }
@@ -878,7 +877,6 @@ function autoSave() {
   fields.forEach(id => data[id] = document.getElementById(id).value);
   try {
     localStorage.setItem('kenshin_pal_data_v2', JSON.stringify(data));
-    document.getElementById('save-status').innerText = '💾 自動保存中';
   } catch (e) {}
 }
 
