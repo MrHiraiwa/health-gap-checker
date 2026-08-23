@@ -557,6 +557,7 @@
         </div>
       </fieldset>
 
+      <!-- 脂質 -->
       <fieldset>
         <legend>🧪 3. 脂質検査</legend>
         <div class="grid">
@@ -569,7 +570,7 @@
           </div>
           <div class="field">
             <div class="field-header">
-              <label for="tg">中性脂肪 / TG (mg/dL)</label>
+              <label for="tg">中性脂肪 (TG mg/dL)</label>
               <span class="ref-val">推奨: 149以下</span>
             </div>
             <input type="number" id="tg" placeholder="例: 160" oninput="autoSave()">
@@ -577,15 +578,16 @@
         </div>
       </fieldset>
 
+      <!-- 糖代謝 -->
       <fieldset>
         <legend>🍚 4. 糖代謝検査</legend>
         <div class="grid">
           <div class="field">
             <div class="field-header">
-              <label for="fbs">空腹時血糖 (mg/dL)</label>
+              <label for="bs">血糖値 (空腹時/血糖 mg/dL)</label>
               <span class="ref-val">推奨: 99以下</span>
             </div>
-            <input type="number" id="fbs" placeholder="例: 102" oninput="autoSave()">
+            <input type="number" id="bs" placeholder="例: 102" oninput="autoSave()">
           </div>
           <div class="field">
             <div class="field-header">
@@ -597,6 +599,7 @@
         </div>
       </fieldset>
 
+      <!-- 肝機能 -->
       <fieldset>
         <legend>🍺 5. 肝機能検査</legend>
         <div class="grid">
@@ -617,12 +620,13 @@
         </div>
       </fieldset>
 
+      <!-- 腎機能・痛風 -->
       <fieldset>
         <legend>💧 6. 腎機能・痛風（尿酸）</legend>
         <div class="grid">
           <div class="field">
             <div class="field-header">
-              <label for="creatinine">血清クレアチニン (CRE mg/dL)</label>
+              <label for="creatinine">クレアチニン (CRE mg/dL)</label>
               <span class="ref-val">eGFR 60以上目標</span>
             </div>
             <input type="number" id="creatinine" step="0.01" placeholder="例: 0.88" oninput="autoSave()">
@@ -681,12 +685,12 @@ let currentMode = 'adult';
 const fields = [
   'gender', 'age', 'activity_level', 'height', 'weight', 'weight_goal_type',
   'vision_r', 'vision_l', 'urine_protein', 'urine_sugar',
-  'sbp', 'dbp', 'ldl', 'tg', 'fbs', 'hba1c', 'alt', 'gtp', 'creatinine', 'ua'
+  'sbp', 'dbp', 'ldl', 'tg', 'bs', 'hba1c', 'alt', 'gtp', 'creatinine', 'ua'
 ];
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    const saved = JSON.parse(localStorage.getItem('health_calorie_custom_data') || '{}');
+    const saved = JSON.parse(localStorage.getItem('health_calorie_custom_data_v4') || '{}');
     fields.forEach(id => {
       if (saved[id] !== undefined) document.getElementById(id).value = saved[id];
     });
@@ -722,7 +726,7 @@ function autoSave() {
   const data = { _mode: currentMode };
   fields.forEach(id => data[id] = document.getElementById(id).value);
   try {
-    localStorage.setItem('health_calorie_custom_data', JSON.stringify(data));
+    localStorage.setItem('health_calorie_custom_data_v4', JSON.stringify(data));
     document.getElementById('save-status').innerText = '💾 自動保存中';
   } catch (e) {}
 }
@@ -734,7 +738,7 @@ function exportData() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `health_calorie_data_${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `health_check_data_${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -762,7 +766,7 @@ function importData(event) {
 
 function clearData() {
   if (confirm('入力内容をリセットしますか？')) {
-    try { localStorage.removeItem('health_calorie_custom_data'); } catch (e) {}
+    try { localStorage.removeItem('health_calorie_custom_data_v4'); } catch (e) {}
     fields.forEach(id => {
       if (id === 'gender') document.getElementById(id).value = 'male';
       else if (id === 'activity_level') document.getElementById(id).value = '1.5';
@@ -794,50 +798,65 @@ function runAnalysis() {
   const items = [];
   const prescriptions = [];
 
-  // 0. 推奨摂取カロリー & 代謝計算
-  if (h && w && age) {
-    let bmr = (10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161);
-    bmr = Math.round(bmr);
-    const tdee = Math.round(bmr * act);
-    const dietCal = Math.max(bmr, tdee - 350);
+  // 目標体重の算出
+  let targetW = null;
+  let targetName = '標準体重 (BMI 22)';
+  if (h) {
+    const standardW = (22 * Math.pow(h / 100, 2)).toFixed(1);
+    const beautyW = (20 * Math.pow(h / 100, 2)).toFixed(1);
+    const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
+
+    targetW = parseFloat(standardW);
+    if (goalType === 'beauty') { targetW = parseFloat(beautyW); targetName = '美容体重 (BMI 20)'; }
+    if (goalType === 'model') { targetW = parseFloat(modelW); targetName = 'モデル体重 (BMI 18.5)'; }
+  }
+
+  // 0. 推奨摂取カロリー & 代謝計算（目標体型に応じた連動計算）
+  if (h && w && age && targetW) {
+    // 現在体重での基礎代謝・維持カロリー
+    let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
+    let currentTdee = Math.round(currentBmr * act);
+
+    // 目標体型での基礎代謝・維持カロリー（Target TDEE）
+    let targetBmr = Math.round((10 * targetW) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
+    let targetTdee = Math.round(targetBmr * act);
+
+    // 安全な減量目標カロリー（現在の維持から-350kcal、または目標体重の維持カロリーの低い方を採用。下限は基礎代謝）
+    let dietCal = Math.min(currentTdee - 350, targetTdee);
+    dietCal = Math.max(currentBmr, Math.round(dietCal));
 
     const calCard = document.getElementById('calorie-result-card');
     calCard.innerHTML = `
-      <div class="calorie-title">🔥 エネルギー消費 & 推奨摂取カロリー</div>
+      <div class="calorie-title">🔥 エネルギー消費 & 推奨摂取カロリー（${targetName} 連動）</div>
       <div style="font-size: 0.88rem; color: #713f12;">
-        活動量（レベル${act}）に基づく1日の適正カロリー設計です。
+        活動量（レベル${act}）と目指す<strong>【${targetName}】</strong>に到達・維持するためのカロリー設計です。
       </div>
       <div class="calorie-grid">
         <div class="calorie-box">
           <div class="calorie-box-val">${dietCal} <span style="font-size:0.8rem;">kcal</span></div>
-          <div class="calorie-box-lbl">🎯 減量目標カロリー<br>(月1〜1.5kg減ペース)</div>
+          <div class="calorie-box-lbl">🎯 減量推奨カロリー<br>(${targetName}への移行期)</div>
         </div>
         <div class="calorie-box">
-          <div class="calorie-box-val">${tdee} <span style="font-size:0.8rem;">kcal</span></div>
-          <div class="calorie-box-lbl">⚖️ 体重維持カロリー<br>(TDEE: 現状維持)</div>
+          <div class="calorie-box-val">${targetTdee} <span style="font-size:0.8rem;">kcal</span></div>
+          <div class="calorie-box-lbl">✨ ${targetName}維持カロリー<br>(目標達成後のキープ目安)</div>
         </div>
         <div class="calorie-box">
-          <div class="calorie-box-val">${bmr} <span style="font-size:0.8rem;">kcal</span></div>
-          <div class="calorie-box-lbl">⚠️ 基礎代謝 (下限)<br>(これ以下は代謝低下リスク)</div>
+          <div class="calorie-box-val">${currentBmr} <span style="font-size:0.8rem;">kcal</span></div>
+          <div class="calorie-box-lbl">⚠️ 現在の基礎代謝 (下限)<br>(これ以下は筋肉減少・代謝低下)</div>
         </div>
       </div>
       <div style="font-size: 0.78rem; color: #854d0e; margin-top: 8px;">
-        💡 <strong>ポイント:</strong> 基礎代謝（${bmr}kcal）を下回る過度な食事制限は避け、<strong>${dietCal} kcal/日</strong> を目安にコントロールしましょう。
+        💡 <strong>ポイント:</strong> 目指す体型がスリムになるほど達成後の維持カロリーも低くなります。まずは <strong>${dietCal} kcal/日</strong> を目標にコントロールしましょう。
       </div>
     `;
   }
 
   // 1. 体重 & ダイエット進捗
-  if (h && w) {
+  if (h && w && targetW) {
     const bmi = w / Math.pow(h / 100, 2);
     const standardW = (22 * Math.pow(h / 100, 2)).toFixed(1);
     const beautyW = (20 * Math.pow(h / 100, 2)).toFixed(1);
     const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
-
-    let targetW = standardW;
-    let targetName = '標準体重 (BMI 22)';
-    if (goalType === 'beauty') { targetW = beautyW; targetName = '美容体重 (BMI 20)'; }
-    if (goalType === 'model') { targetW = modelW; targetName = 'モデル体重 (BMI 18.5)'; }
 
     const diff = (w - targetW).toFixed(1);
     const dietCard = document.getElementById('diet-result-card');
@@ -893,7 +912,7 @@ function runAnalysis() {
     const dbp = parseFloat(document.getElementById('dbp').value);
     const ldl = parseFloat(document.getElementById('ldl').value);
     const tg = parseFloat(document.getElementById('tg').value);
-    const fbs = parseFloat(document.getElementById('fbs').value);
+    const bs = parseFloat(document.getElementById('bs').value);
     const hba1c = parseFloat(document.getElementById('hba1c').value);
     const alt = parseFloat(document.getElementById('alt').value);
     const gtp = parseFloat(document.getElementById('gtp').value);
@@ -915,7 +934,7 @@ function runAnalysis() {
         name: '腎機能 (eGFR / 推算糸球体濾過量)',
         compare: `実測: <strong>${egfr} mL/分/1.73㎡</strong> (CRE: ${cre}) ｜ 推奨: <strong>60.0 以上</strong>`,
         badge: egfr >= 60 ? 'gap-achieved' : (egfr >= 50 ? 'gap-warning' : 'gap-alert'),
-        badgeText: egfr >= 60 ? '正常域 💧' : `低下 (目標60まで +${(60 - egfr).toFixed(1)})`,
+        badgeText: egfr >= 60 ? '正常域 🎯' : `低下 (目標60まで +${(60 - egfr).toFixed(1)})`,
         tip: '腎臓保護には減塩・十分な水分補給・血圧管理が最優先です。'
       });
     }
@@ -966,11 +985,11 @@ function runAnalysis() {
       });
     }
 
-    // 5. 脂質 & 糖
+    // 5. 脂質 (LDL & 中性脂肪)
     if (ldl) {
       const diff = ldl - 119;
       items.push({
-        name: 'LDLコレステロール',
+        name: 'LDLコレステロール (悪玉)',
         compare: `実測: <strong>${ldl} mg/dL</strong> ｜ 推奨: <strong>119 以下</strong>`,
         badge: diff <= 0 ? 'gap-achieved' : 'gap-warning',
         badgeText: diff <= 0 ? '基準内 🎯' : `あと -${diff} mg/dL`,
@@ -984,14 +1003,20 @@ function runAnalysis() {
         compare: `実測: <strong>${tg} mg/dL</strong> ｜ 推奨: <strong>149 以下</strong>`,
         badge: diff <= 0 ? 'gap-achieved' : 'gap-warning',
         badgeText: diff <= 0 ? '基準内 🎯' : `あと -${diff} mg/dL`,
-        tip: '夜遅い主食やお酒を控えめにしましょう。'
+        tip: '夜遅い主食やお酒を控えめにすることで改善しやすい指標です。'
       });
     }
-    if (hba1c || fbs) {
-      const isHigh = (hba1c && hba1c > 5.5) || (fbs && fbs > 99);
+
+    // 6. 糖代謝 (血糖 & HbA1c)
+    if (bs || hba1c) {
+      let isHigh = (hba1c && hba1c > 5.5) || (bs && bs > 99);
+      let desc = [];
+      if (bs) desc.push(`血糖値: ${bs}mg/dL (目標99以下)`);
+      if (hba1c) desc.push(`HbA1c: ${hba1c}% (目標5.5%以下)`);
+
       items.push({
         name: '糖代謝 (血糖 / HbA1c)',
-        compare: `実測: <strong>${fbs ? fbs+'mg/dL' : ''} ${hba1c ? 'HbA1c:'+hba1c+'%' : ''}</strong> ｜ 推奨: <strong>血糖99以下 / HbA1c 5.5%以下</strong>`,
+        compare: `実測: <strong>${desc.join(' ｜ ')}</strong>`,
         badge: !isHigh ? 'gap-achieved' : 'gap-warning',
         badgeText: !isHigh ? '正常域 🎯' : '高め',
         tip: '食後の散歩や野菜ファーストが効果的です🚶'
