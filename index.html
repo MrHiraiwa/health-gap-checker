@@ -545,7 +545,8 @@
       }
 
       body.hide-private-data .metric-compare,
-      body.hide-private-data #diet-result-card div[style*="font-size: 0.9rem"] {
+      body.hide-private-data #diet-result-card div[style*="font-size: 0.9rem"],
+      body.hide-private-data #diet-result-card div[style*="font-size: 0.85rem"] {
         visibility: hidden;
         position: relative;
       }
@@ -900,7 +901,7 @@ function switchMode(mode, save = true) {
   if (mode === 'school') {
     adultSection.style.display = 'none';
     schoolSection.style.display = 'block';
-    activityField.style.display = 'none';
+    activityField.style.display = 'flex'; // 成長期の活動量も反映
     adultWeightGoal.style.display = 'none';
     laurerGoal.style.display = 'flex';
   } else if (mode === 'simple') {
@@ -1027,8 +1028,26 @@ function runAnalysis() {
 
   // 🎒 未成年・学校健診モード
   if (currentMode === 'school') {
-    calCard.style.display = 'none';
-    roadmapCard.style.display = 'none';
+    calCard.style.display = 'block';
+
+    // 成長期の推奨エネルギー量（厚労省 食事摂取基準ベースの安全設計）
+    if (h && w && age) {
+      let bmrChild = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
+      let recCalChild = Math.round(bmrChild * act);
+
+      calCard.innerHTML = `
+        <div class="calorie-title">🎒 成長期・発育のための推奨エネルギー必要量</div>
+        <div style="font-size: 0.88rem; color: #713f12;">
+          成長期のお子様には<strong>カロリー制限（ダイエット）は行いません</strong>。発育と運動に必要な適正エネルギーです。
+        </div>
+        <div class="calorie-grid">
+          <div class="calorie-box" style="grid-column: 1 / -1; background: #fffbeb; border: 1.5px solid #fde047;">
+            <div class="calorie-box-val" style="font-size: 1.35rem;">${recCalChild} <span style="font-size:0.85rem;">kcal / 日</span></div>
+            <div class="calorie-box-lbl">🌱 成長期 推奨摂取カロリー (活動レベル${act})<br>（3食バランスよくしっかり食べましょう）</div>
+          </div>
+        </div>
+      `;
+    }
 
     if (h && w) {
       const lauter = (w / Math.pow(h, 3)) * 10000000;
@@ -1053,6 +1072,26 @@ function runAnalysis() {
       if (lauter < 100) { 判定 = 'やせ気味 (栄養バランスに注意)'; badgeCls = 'gap-warning'; badgeTxt = 'やせ気味'; }
       else if (lauter >= 160 && lauter < 190) { 判定 = '軽度太め (適度な運動・外遊びを推奨)'; badgeCls = 'gap-warning'; badgeTxt = 'やや太め'; }
       else if (lauter >= 190) { 判定 = '肥満傾向 (生活習慣や食生活の見直しを推奨)'; badgeCls = 'gap-alert'; badgeTxt = '要生活改善'; }
+
+      // 成長ロードマップ（身長が伸びることでローレル指数が適正化する目安）
+      const neededHeightForCurrentWeight = Math.cbrt((w * 10000000) / targetLauterVal).toFixed(1);
+      const heightGrowthNeeded = (neededHeightForCurrentWeight - h).toFixed(1);
+
+      if (heightGrowthNeeded > 0) {
+        roadmapCard.innerHTML = `
+          <div class="roadmap-title">📅 成長期・発育ロードマップ（身長の伸びによる適正化）</div>
+          <div style="font-size: 0.9rem; color: #14532d; line-height: 1.6;">
+            現在の体重（${w}kg）を維持したまま、身長が <span class="roadmap-highlight">あと約 +${heightGrowthNeeded} cm（身長 ${neededHeightForCurrentWeight} cm）</span> 伸びると、
+            自然に<strong>【${targetLauterName}】</strong>のバランスに到達します✨
+          </div>
+          <div style="font-size: 0.78rem; color: #166534; margin-top: 6px; background: #ffffff; padding: 6px 10px; border-radius: 6px; border: 1px solid #bbf7d0;">
+            💡 <strong>成長期の基本方針:</strong> 体重を落とすのではなく、食事の栄養バランスと外遊び・運動習慣を整えて「背が伸びるのを待つ」のが最も安全で健やかな成長アプローチです。
+          </div>
+        `;
+        roadmapCard.style.display = 'block';
+      } else {
+        roadmapCard.style.display = 'none';
+      }
 
       let laurerDiffText = '';
       if (laurerDiff > 0) {
