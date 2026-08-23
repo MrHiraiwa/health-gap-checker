@@ -1,4 +1,4 @@
-# 🩺 Health Gap Checker (健診ギャップ分析 & ダイエット・ヘルス処方箋)
+# 🩺 検診パル (健診ギャップ分析 & ダイエット・ヘルス処方箋)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform: Web / GitHub Pages](https://img.shields.io/badge/Platform-Web-success.svg)](https://mrhiraiwa.github.io/health-gap-checker/)
