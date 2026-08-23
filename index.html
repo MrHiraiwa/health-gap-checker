@@ -557,7 +557,7 @@
     </div>
   </div>
 
-  <!-- モード切替（成人一般 / 簡易モード / 未成年学校健診） -->
+  <!-- モード切替 -->
   <div class="mode-selector">
     <div id="btn-mode-adult" class="mode-btn active" onclick="switchMode('adult')">👔 成人・一般</div>
     <div id="btn-mode-simple" class="mode-btn" onclick="switchMode('simple')">⚡ 簡易モード</div>
@@ -592,7 +592,7 @@
       </div>
     </fieldset>
 
-    <!-- 身体測定 & 目指す体型（成人用） -->
+    <!-- 身体測定 & 目指す体型 -->
     <fieldset id="section-body-adult">
       <legend>⚖️ 1. 身体測定 & 目指す体型ターゲット</legend>
       <div class="grid">
@@ -656,7 +656,7 @@
       </div>
     </fieldset>
 
-    <!-- 成人・一般健診専用項目（簡易モードでは非表示） -->
+    <!-- 成人・一般健診専用項目 -->
     <div id="section-adult">
       <fieldset>
         <legend>💓 2. 血圧測定</legend>
@@ -853,12 +853,10 @@ function switchMode(mode, save = true) {
   } else if (mode === 'simple') {
     adultSection.style.display = 'block';
     schoolSection.style.display = 'none';
-    // 簡易モードでは血液検査項目を隠し、血圧と体重測定だけにする
     bloodTestFields.forEach(el => el.style.display = 'none');
     activityField.style.display = 'none';
     weightGoal.style.display = 'none';
   } else {
-    // adult
     adultSection.style.display = 'block';
     schoolSection.style.display = 'none';
     bloodTestFields.forEach(el => el.style.display = 'block');
@@ -866,7 +864,13 @@ function switchMode(mode, save = true) {
     weightGoal.style.display = 'flex';
   }
 
-  if (save) autoSave();
+  if (save) {
+    autoSave();
+    // モード切替時に分析結果が出ている場合は自動再計算して整合性を保つ
+    if (document.getElementById('analysis-section').style.display === 'block') {
+      runAnalysis();
+    }
+  }
 }
 
 function autoSave() {
@@ -949,19 +953,17 @@ function runAnalysis() {
   const roadmapCard = document.getElementById('roadmap-result-card');
   const dietCard = document.getElementById('diet-result-card');
 
-  // 未成年・学校健診モードの場合のロジック（ローレル指数・学校保健基準の肥満度判定）
+  // 🎒 未成年・学校健診モード
   if (currentMode === 'school') {
     calCard.style.display = 'none';
     roadmapCard.style.display = 'none';
 
     if (h && w) {
-      // ローレル指数算出 = 体重(kg) / 身長(cm)^3 × 10^7
       const lauter = (w / Math.pow(h, 3)) * 10000000;
-      let判定 = '標準 (発育良好)';
+      let 判定 = '標準 (発育良好)';
       let badgeCls = 'gap-achieved';
       let badgeTxt = '正常域 🎯';
 
-      // 学校保健における標準ローレル指数（大まかな目安：115〜145程度が標準）
       if (lauter < 100) { 判定 = 'やせ気味 (栄養バランスに注意)'; badgeCls = 'gap-warning'; badgeTxt = 'やせ気味'; }
       else if (lauter >= 160 && lauter < 190) { 判定 = '軽度太め (適度な運動・外遊びを推奨)'; badgeCls = 'gap-warning'; badgeTxt = 'やや太め'; }
       else if (lauter >= 190) { 判定 = '肥満傾向 (生活習慣や食生活の見直しを推奨)'; badgeCls = 'gap-alert'; badgeTxt = '要生活改善'; }
@@ -1003,7 +1005,7 @@ function runAnalysis() {
     }
 
   } else {
-    // 成人モード ＆ 簡易モード
+    // 👔 成人モード ＆ ⚡ 簡易モード
     calCard.style.display = 'block';
 
     let targetW = null;
@@ -1014,8 +1016,8 @@ function runAnalysis() {
       const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
 
       targetW = parseFloat(standardW);
-      if (goalType === 'beauty') { targetW = parseFloat(beautyW); targetName = '美容体重 (BMI 20)'; }
-      if (goalType === 'model') { targetW = parseFloat(modelW); targetName = 'モデル体重 (BMI 18.5)'; }
+      if (goalType === 'beauty' && currentMode === 'adult') { targetW = parseFloat(beautyW); targetName = '美容体重 (BMI 20)'; }
+      if (goalType === 'model' && currentMode === 'adult') { targetW = parseFloat(modelW); targetName = 'モデル体重 (BMI 18.5)'; }
     }
 
     let dailyDeficit = 350;
@@ -1133,7 +1135,7 @@ function runAnalysis() {
       roadmapCard.style.display = 'none';
     }
 
-    // 血圧などのチェック（成人・簡易共通）
+    // 血圧（成人・簡易共通）
     const sbp = parseFloat(document.getElementById('sbp').value);
     const dbp = parseFloat(document.getElementById('dbp').value);
     if (sbp || dbp) {
@@ -1147,7 +1149,7 @@ function runAnalysis() {
       });
     }
 
-    // 通常モードのみ血液検査
+    // 👔 成人・一般モードのみ血液検査項目を処理
     if (currentMode === 'adult') {
       const ldl = parseFloat(document.getElementById('ldl').value);
       const tg = parseFloat(document.getElementById('tg').value);
