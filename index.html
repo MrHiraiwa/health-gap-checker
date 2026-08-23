@@ -544,8 +544,9 @@
         line-height: 1.25 !important;
       }
 
-      /* 🔏 プライバシー保護モード発動時：具体的な実測数値をマスク */
-      body.hide-private-data .metric-compare {
+      /* 🔏 プライバシー保護モード発動時：体重・実測数値をすべてマスク */
+      body.hide-private-data .metric-compare,
+      body.hide-private-data #diet-result-card div[style*="font-size: 0.9rem"] {
         visibility: hidden;
         position: relative;
       }
@@ -556,6 +557,15 @@
         left: 4px;
         top: 2px;
         color: #475569;
+        font-weight: bold;
+      }
+      body.hide-private-data #diet-result-card div[style*="font-size: 0.9rem"]::after {
+        content: "体重・目標データの詳細: [プライバシー保護・非表示]";
+        visibility: visible;
+        position: absolute;
+        left: 4px;
+        top: 2px;
+        color: #831843;
         font-weight: bold;
       }
     }
