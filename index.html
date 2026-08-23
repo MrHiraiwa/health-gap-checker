@@ -609,12 +609,9 @@
           <input type="number" id="age" placeholder="例: 48" oninput="handleAgeChange()">
         </div>
         <div class="field" style="grid-column: 1 / -1;" id="activity-field-wrapper">
-          <label for="activity_level">🏃‍♂️ 日常の活動量・運動量（カロリー計算に使用）</label>
+          <label for="activity_level" id="activity_level_label">🏃‍♂️ 日常の活動量・運動量（カロリー計算に使用）</label>
           <select id="activity_level" onchange="autoSave()">
-            <option value="1.2">低い (デスクワーク中心、ほぼ運動しない / 歩数〜5,000歩)</option>
-            <option value="1.5">普通 (通勤・立ち仕事・軽い散歩など / 歩数8,000〜12,000歩)</option>
-            <option value="1.75">高い (立ち仕事多め、定期的なランニングやジム運動習慣あり)</option>
-            <option value="2.0">非常に高い (激しい肉体労働、ハードなトレーニング・アスリート)</option>
+            <!-- JSで成人用・学童用にオプションを動的切り替え -->
           </select>
         </div>
       </div>
@@ -862,16 +859,42 @@ const fields = [
   'sbp', 'dbp', 'ldl', 'tg', 'bs', 'hba1c', 'alt', 'gtp', 'creatinine', 'ua'
 ];
 
+const adultActivityOptions = `
+  <option value="1.2">低い (デスクワーク中心、ほぼ運動しない / 歩数〜5,000歩)</option>
+  <option value="1.5">普通 (通勤・立ち仕事・軽い散歩など / 歩数8,000〜12,000歩)</option>
+  <option value="1.75">高い (立ち仕事多め、定期的なランニングやジム運動習慣あり)</option>
+  <option value="2.0">非常に高い (激しい肉体労働、ハードなトレーニング・アスリート)</option>
+`;
+
+const schoolActivityOptions = `
+  <option value="1.2">低い (座学中心、インドア派、放課後の外遊びや部活なし)</option>
+  <option value="1.5">普通 (通学・体育の授業・軽い外遊びや文化部など)</option>
+  <option value="1.75">高い (活発な外遊び・体育＋定期的な運動部・スイミング等)</option>
+  <option value="2.0">非常に高い (ハードな運動部活動・ジュニアアスリート・毎日激しい運動)</option>
+`;
+
 window.addEventListener('DOMContentLoaded', () => {
   try {
     const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v2') || '{}');
+    const initialMode = saved._mode || 'adult';
+    renderActivityOptions(initialMode, saved.activity_level || '1.5');
+    
     fields.forEach(id => {
       if (saved[id] !== undefined && document.getElementById(id)) document.getElementById(id).value = saved[id];
     });
-    if (saved._mode) switchMode(saved._mode, false);
+    switchMode(initialMode, false);
     if (Object.keys(saved).length > 0) runAnalysis();
-  } catch (e) {}
+  } catch (e) {
+    renderActivityOptions('adult', '1.5');
+  }
 });
+
+function renderActivityOptions(mode, selectedVal) {
+  const select = document.getElementById('activity_level');
+  const currentVal = selectedVal || select.value || '1.5';
+  select.innerHTML = mode === 'school' ? schoolActivityOptions : adultActivityOptions;
+  select.value = currentVal;
+}
 
 function handleAgeChange() {
   const age = parseFloat(document.getElementById('age').value);
@@ -898,10 +921,13 @@ function switchMode(mode, save = true) {
   const adultWeightGoal = document.getElementById('weight-goal-wrapper');
   const laurerGoal = document.getElementById('laurer-goal-wrapper');
 
+  // 活動量オプションの切り替え
+  renderActivityOptions(mode);
+
   if (mode === 'school') {
     adultSection.style.display = 'none';
     schoolSection.style.display = 'block';
-    activityField.style.display = 'flex'; // 成長期の活動量も反映
+    activityField.style.display = 'flex';
     adultWeightGoal.style.display = 'none';
     laurerGoal.style.display = 'flex';
   } else if (mode === 'simple') {
@@ -961,11 +987,11 @@ function importData(event) {
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result);
+      if (data._mode) switchMode(data._mode, false);
       fields.forEach(id => {
         const el = document.getElementById(id);
         if (el && data[id] !== undefined) el.value = data[id];
       });
-      if (data._mode) switchMode(data._mode, false);
       autoSave();
       runAnalysis();
       alert('データを復元しました✨');
