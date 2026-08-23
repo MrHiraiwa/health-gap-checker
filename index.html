@@ -641,9 +641,9 @@
 
   <!-- モード切替 -->
   <div class="mode-selector">
-    <div id="btn-mode-adult" class="mode-btn active" onclick="switchMode('adult', true, true)">👔 成人・一般健診</div>
-    <div id="btn-mode-simple" class="mode-btn" onclick="switchMode('simple', true, true)">🏠 自宅計測 (体重・血圧)</div>
-    <div id="btn-mode-school" class="mode-btn" onclick="switchMode('school', true, true)">🎒 未成年・学校健診</div>
+    <div id="btn-mode-adult" class="mode-btn active" onclick="switchMode('adult')">👔 成人・一般健診</div>
+    <div id="btn-mode-simple" class="mode-btn" onclick="switchMode('simple')">🏠 自宅計測 (体重・血圧)</div>
+    <div id="btn-mode-school" class="mode-btn" onclick="switchMode('school')">🎒 未成年・学校健診</div>
   </div>
 
   <form id="health-form">
@@ -660,7 +660,7 @@
         </div>
         <div class="field">
           <label for="age">年齢 (歳)</label>
-          <input type="number" id="age" placeholder="例: 12" oninput="handleAgeChange()">
+          <input type="number" id="age" placeholder="例: 12" oninput="autoSave()">
         </div>
         <div class="field" style="grid-column: 1 / -1;" id="activity-field-wrapper">
           <label for="activity_level" id="activity_level_label">🏃‍♂️ 日常の活動量・運動量（カロリー計算に使用）</label>
@@ -676,11 +676,11 @@
       <legend>⚖️ 1. 身体測定 & 目指す体型ターゲット</legend>
       <div class="grid">
         <div class="field">
-          <label for="height">身長 (cm)</label>
+          <label for="height">身長 (cm) <span style="color:#ef4444;">*</span></label>
           <input type="number" id="height" step="0.1" placeholder="例: 150.0" oninput="autoSave()">
         </div>
         <div class="field">
-          <label for="weight">体重 (kg)</label>
+          <label for="weight">体重 (kg) <span style="color:#ef4444;">*</span></label>
           <input type="number" id="weight" step="0.1" placeholder="例: 45.0" oninput="autoSave()">
         </div>
         
@@ -917,7 +917,6 @@
 
 <script>
 let currentMode = 'adult'; // 'adult', 'simple', 'school'
-let isUserExplicitMode = false; // ユーザーが明示的にタブをクリックしたかどうか
 
 const fields = [
   'gender', 'age', 'activity_level', 'height', 'weight', 'weight_goal_type', 'laurer_goal_type',
@@ -950,8 +949,8 @@ window.addEventListener('DOMContentLoaded', () => {
     fields.forEach(id => {
       if (saved[id] !== undefined && document.getElementById(id)) document.getElementById(id).value = saved[id];
     });
-    switchMode(initialMode, false, false);
-    if (Object.keys(saved).length > 0) runAnalysis();
+    switchMode(initialMode, false);
+    if (saved.height && saved.weight) runAnalysis();
   } catch (e) {
     renderActivityOptions('adult', '1.5');
   }
@@ -964,22 +963,8 @@ function renderActivityOptions(mode, selectedVal) {
   select.value = currentVal;
 }
 
-function handleAgeChange() {
-  const age = parseFloat(document.getElementById('age').value);
-  // ユーザーが手動でタブを選んでいない場合のみ自動切替をアシスト
-  if (!isNaN(age) && !isUserExplicitMode) {
-    if (age < 18 && currentMode === 'adult') {
-      switchMode('school', true, false);
-    } else if (age >= 18 && currentMode === 'school') {
-      switchMode('adult', true, false);
-    }
-  }
-  autoSave();
-}
-
-function switchMode(mode, save = true, isUserClick = false) {
+function switchMode(mode, save = true) {
   currentMode = mode;
-  if (isUserClick) isUserExplicitMode = true;
 
   document.getElementById('btn-mode-adult').classList.toggle('active', mode === 'adult');
   document.getElementById('btn-mode-simple').classList.toggle('active', mode === 'simple');
@@ -1018,7 +1003,9 @@ function switchMode(mode, save = true, isUserClick = false) {
 
   if (save) {
     autoSave();
-    if (document.getElementById('analysis-section').style.display === 'block') {
+    const h = parseFloat(document.getElementById('height').value);
+    const w = parseFloat(document.getElementById('weight').value);
+    if (h && w) {
       runAnalysis();
     }
   }
@@ -1057,7 +1044,7 @@ function importData(event) {
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result);
-      if (data._mode) switchMode(data._mode, false, true);
+      if (data._mode) switchMode(data._mode, false);
       fields.forEach(id => {
         const el = document.getElementById(id);
         if (el && data[id] !== undefined) el.value = data[id];
@@ -1074,8 +1061,9 @@ function importData(event) {
 
 function clearData() {
   if (confirm('入力内容をリセットしますか？')) {
+    const savedMode = currentMode;
     try { localStorage.removeItem('kenshin_pal_data_v2'); } catch (e) {}
-    isUserExplicitMode = false;
+    
     fields.forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -1087,6 +1075,10 @@ function clearData() {
       else if (id.startsWith('urine')) el.value = '-';
       else el.value = '';
     });
+    
+    // モードを維持して保存
+    currentMode = savedMode;
+    autoSave();
     document.getElementById('analysis-section').style.display = 'none';
   }
 }
@@ -1133,6 +1125,11 @@ function runAnalysis() {
   const goalType = document.getElementById('weight_goal_type').value;
   const laurerGoalType = document.getElementById('laurer_goal_type').value;
 
+  if (!h || !w) {
+    alert('「身長」と「体重」を入力してから実行してください💡');
+    return;
+  }
+
   const items = [];
   const prescriptions = [];
   
@@ -1150,13 +1147,13 @@ function runAnalysis() {
   roadmapCard.innerHTML = '';
   dietCard.innerHTML = '';
 
-  let totalWater = w ? Math.round(w * 35) : 2500;
-  let drinkWaterMin = w ? Math.max(1200, Math.round(w * 22)) : 1500;
-  let drinkWaterMax = w ? Math.min(3000, Math.round(w * 30)) : 2000;
+  let totalWater = Math.round(w * 35);
+  let drinkWaterMin = Math.max(1200, Math.round(w * 22));
+  let drinkWaterMax = Math.min(3000, Math.round(w * 30));
 
   // 🎒 未成年・学校健診モード
   if (currentMode === 'school') {
-    if (h && w && !isNaN(age)) {
+    if (!isNaN(age)) {
       let bmrChild = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
       let recCalChild = Math.round(bmrChild * act);
 
@@ -1184,106 +1181,105 @@ function runAnalysis() {
       maskedLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
     }
 
-    if (h && w) {
-      const lauter = (w / Math.pow(h, 3)) * 10000000;
-      let targetLauterVal = 130;
-      let targetLauterShort = '標準 130';
-      let targetLauterName = '標準発育 (ローレル指数 130)';
+    const lauter = (w / Math.pow(h, 3)) * 10000000;
+    let targetLauterVal = 130;
+    let targetLauterShort = '標準 130';
+    let targetLauterName = '標準発育 (ローレル指数 130)';
 
-      if (laurerGoalType === 'slim') {
-        targetLauterVal = 115;
-        targetLauterShort = 'スリム 115';
-        targetLauterName = 'スッキリ体型 (ローレル指数 115)';
-      } else if (laurerGoalType === 'upper') {
-        targetLauterVal = 145;
-        targetLauterShort = '上限 145';
-        targetLauterName = 'ふくよか許容上限 (ローレル指数 145)';
-      }
+    if (laurerGoalType === 'slim') {
+      targetLauterVal = 115;
+      targetLauterShort = 'スリム 115';
+      targetLauterName = 'スッキリ体型 (ローレル指数 115)';
+    } else if (laurerGoalType === 'upper') {
+      targetLauterVal = 145;
+      targetLauterShort = '上限 145';
+      targetLauterName = 'ふくよか許容上限 (ローレル指数 145)';
+    }
 
-      const targetLaurerW = parseFloat(((targetLauterVal * Math.pow(h, 3)) / 10000000).toFixed(1));
-      const laurerDiff = parseFloat((w - targetLaurerW).toFixed(1));
+    const targetLaurerW = parseFloat(((targetLauterVal * Math.pow(h, 3)) / 10000000).toFixed(1));
+    const laurerDiff = parseFloat((w - targetLaurerW).toFixed(1));
 
-      let 判定 = '標準 (発育良好)';
-      let badgeCls = 'gap-achieved';
-      let badgeTxt = '正常域 🎯';
+    let 判定 = '標準 (発育良好)';
+    let badgeCls = 'gap-achieved';
+    let badgeTxt = '正常域 🎯';
 
-      if (lauter < 100) { 判定 = 'やせ気味 (栄養バランスに注意)'; badgeCls = 'gap-warning'; badgeTxt = 'やせ気味'; }
-      else if (lauter >= 160 && lauter < 190) { 判定 = '軽度太め (適度な運動・外遊びを推奨)'; badgeCls = 'gap-warning'; badgeTxt = 'やや太め'; }
-      else if (lauter >= 190) { 判定 = '肥満傾向 (生活習慣や食生活の見直しを推奨)'; badgeCls = 'gap-alert'; badgeTxt = '要生活改善'; }
+    if (lauter < 100) { 判定 = 'やせ気味 (栄養バランスに注意)'; badgeCls = 'gap-warning'; badgeTxt = 'やせ気味'; }
+    else if (lauter >= 160 && lauter < 190) { 判定 = '軽度太め (適度な運動・外遊びを推奨)'; badgeCls = 'gap-warning'; badgeTxt = 'やや太め'; }
+    else if (lauter >= 190) { 判定 = '肥満傾向 (生活習慣や食生活の見直しを推奨)'; badgeCls = 'gap-alert'; badgeTxt = '要生活改善'; }
 
-      const neededHeightForCurrentWeight = Math.cbrt((w * 10000000) / targetLauterVal).toFixed(1);
-      const heightGrowthNeeded = parseFloat((neededHeightForCurrentWeight - h).toFixed(1));
+    // 具体的ロードマップの計算
+    const neededHeightForCurrentWeight = Math.cbrt((w * 10000000) / targetLauterVal).toFixed(1);
+    const heightGrowthNeeded = parseFloat((neededHeightForCurrentWeight - h).toFixed(1));
 
-      if (lauter >= 160) {
-        const annualGrowth = 5.5;
-        const expectedNextYearH = (h + annualGrowth);
-        const expectedNextYearTargetW = parseFloat(((targetLauterVal * Math.pow(expectedNextYearH, 3)) / 10000000).toFixed(1));
-        
-        let planHtml = '';
-        if (lauter >= 190) {
-          planHtml = `
-            <div class="roadmap-title">📅 成長期・具体的発育ロードマップ（ステップ改善）</div>
-            <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
-              現在の身長（${h}cm）における適正体重目安は <strong style="color:#15803d;">${targetLaurerW} kg</strong> です（現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg 超過</span>）。<br>
-              成長期は急な減量は行わず、以下の<strong>【2段階ステップ】</strong>で無理なく適正化を目指します✨
-            </div>
-            <div style="background:#ffffff; border:1px solid #bbf7d0; border-radius:8px; padding:8px 12px; margin-top:8px; font-size:0.82rem; color:#166534;">
-              <strong>🎯 ステップ1 (直近の目標):</strong><br>
-              まずは「体重の急増をストップ」させ、ふくよか許容上限（145基準：${parseFloat(((145 * Math.pow(h, 3)) / 10000000).toFixed(1))}kg）を目指してジュースをお茶に変え、間食の時間を決めることからスタート！<br><br>
-              <strong>🌱 ステップ2 (1年後の成長目安):</strong><br>
-              1年後に身長が約+${annualGrowth}cm伸びて <strong>${expectedNextYearH.toFixed(1)} cm</strong> になった場合、体重を現在付近（約${expectedNextYearTargetW}kg）にキープできていれば自然と適正バランスに到達します。
-            </div>
-          `;
-        } else {
-          planHtml = `
-            <div class="roadmap-title">📅 成長期・発育ロードマップ（身長の伸びと体重キープ）</div>
-            <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
-              現在の身長（${h}cm）の適正体重目安は <strong style="color:#15803d;">${targetLaurerW} kg</strong> です（現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg 超過</span>）。<br>
-              体重を大きく減らす必要はありません。<strong>現在の体重をキープしながら、1年間の成長（身長 +約${annualGrowth}cm）を待つ</strong>ことで、1年後（身長 ${expectedNextYearH.toFixed(1)}cm / 適正目安 ${expectedNextYearTargetW}kg）には無理なく標準域（130）へ近づきます✨
-            </div>
-          `;
-        }
-        roadmapCard.innerHTML = planHtml;
-        roadmapCard.style.display = 'block';
-      } else if (heightGrowthNeeded > 0 && heightGrowthNeeded <= 10.0) {
-        roadmapCard.innerHTML = `
-          <div class="roadmap-title">📅 成長期・発育ロードマップ（自然な適正化）</div>
+    if (lauter >= 160) {
+      const annualGrowth = 5.5;
+      const expectedNextYearH = (h + annualGrowth);
+      const expectedNextYearTargetW = parseFloat(((targetLauterVal * Math.pow(expectedNextYearH, 3)) / 10000000).toFixed(1));
+      
+      let planHtml = '';
+      if (lauter >= 190) {
+        planHtml = `
+          <div class="roadmap-title">📅 成長期・具体的発育ロードマップ（ステップ改善）</div>
           <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
-            現在の体重（${w}kg）をキープしたまま、身長が <span class="roadmap-highlight">あと約 +${heightGrowthNeeded} cm（身長 ${neededHeightForCurrentWeight} cm）</span> 伸びると、
-            自然に<strong>【${targetLauterName}】</strong>のバランスに到達します✨
+            現在の身長（${h}cm）における適正体重目安は <strong style="color:#15803d;">${targetLaurerW} kg</strong> です（現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg 超過</span>）。<br>
+            成長期は急な減量は行わず、以下の<strong>【2段階ステップ】</strong>で無理なく適正化を目指します✨
+          </div>
+          <div style="background:#ffffff; border:1px solid #bbf7d0; border-radius:8px; padding:8px 12px; margin-top:8px; font-size:0.82rem; color:#166534;">
+            <strong>🎯 ステップ1 (直近の目標):</strong><br>
+            まずは「体重の急増をストップ」させ、ふくよか許容上限（145基準：${parseFloat(((145 * Math.pow(h, 3)) / 10000000).toFixed(1))}kg）を目指してジュースをお茶に変え、間食の時間を決めることからスタート！<br><br>
+            <strong>🌱 ステップ2 (1年後の成長目安):</strong><br>
+            1年後に身長が約+${annualGrowth}cm伸びて <strong>${expectedNextYearH.toFixed(1)} cm</strong> になった場合、体重を現在付近（約${expectedNextYearTargetW}kg）にキープできていれば自然と適正バランスに到達します。
           </div>
         `;
-        roadmapCard.style.display = 'block';
-      }
-
-      let laurerDiffText = '';
-      if (laurerDiff > 0) {
-        laurerDiffText = `目標の<strong>【${targetLauterName}：${targetLaurerW}kg】</strong>に対して、現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg</span> です。`;
-      } else if (laurerDiff < 0) {
-        laurerDiffText = `目標の<strong>【${targetLauterName}：${targetLaurerW}kg】</strong>に対して、現在 <span style="color:#2563eb; font-weight:bold;">-${Math.abs(laurerDiff)} kg</span> です。`;
       } else {
-        laurerDiffText = `目標の<strong>【${targetLauterName}】</strong>ぴったりです！🎉`;
+        planHtml = `
+          <div class="roadmap-title">📅 成長期・発育ロードマップ（身長の伸びと体重キープ）</div>
+          <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
+            現在の身長（${h}cm）の適正体重目安は <strong style="color:#15803d;">${targetLaurerW} kg</strong> です（現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg 超過</span>）。<br>
+            体重を大きく減らす必要はありません。<strong>現在の体重をキープしながら、1年間の成長（身長 +約${annualGrowth}cm）を待つ</strong>ことで、1年後（身長 ${expectedNextYearH.toFixed(1)}cm / 適正目安 ${expectedNextYearTargetW}kg）には無理なく標準域（130）へ近づきます✨
+          </div>
+        `;
       }
-
-      dietCard.innerHTML = `
-        <div class="diet-target-title">🎒 学校健診・成長期 発育チェック</div>
-        <div style="font-size: 0.9rem; color: #831843; margin-bottom: 6px;">
-          実測: 身長 <strong>${h}cm</strong>・体重 <strong>${w}kg</strong> ｜ ローレル指数: <strong>${lauter.toFixed(1)}</strong>【${判定}】
+      roadmapCard.innerHTML = planHtml;
+      roadmapCard.style.display = 'block';
+    } else if (heightGrowthNeeded > 0 && heightGrowthNeeded <= 10.0) {
+      roadmapCard.innerHTML = `
+        <div class="roadmap-title">📅 成長期・発育ロードマップ（自然な適正化）</div>
+        <div style="font-size: 0.88rem; color: #14532d; line-height: 1.6;">
+          現在の体重（${w}kg）をキープしたまま、身長が <span class="roadmap-highlight">あと約 +${heightGrowthNeeded} cm（身長 ${neededHeightForCurrentWeight} cm）</span> 伸びると、
+          自然に<strong>【${targetLauterName}】</strong>のバランスに到達します✨
         </div>
-        <div style="font-size: 0.85rem; color: #9d174d; margin-bottom: 6px;">${laurerDiffText}</div>
       `;
-
-      rawLines.push(`・ローレル指数: ${lauter.toFixed(1)} (${判定}) ｜ 実測: ${h}cm / ${w}kg ｜ 目標: ${targetLauterName} (目安: ${targetLaurerW}kg)`);
-      maskedLines.push(`・ローレル指数判定: 【${判定}】 ｜ 目標: ${targetLauterName}`);
-
-      items.push({
-        name: `体型目標 (${targetLauterShort})`,
-        compare: `実測: <strong>${lauter.toFixed(1)}</strong> (体重:${w}kg) ｜ 目標: <strong>${targetLauterVal}</strong> (目安:${targetLaurerW}kg)`,
-        badge: badgeCls,
-        badgeText: badgeTxt,
-        tip: laurer >= 160 ? 'ジュースをお茶に変え、夜遅い間食を控えて元気に外遊びしましょう🏀' : '成長期はしっかり食べて元気に体を動かすことが一番の健康です✨'
-      });
+      roadmapCard.style.display = 'block';
     }
+
+    let laurerDiffText = '';
+    if (laurerDiff > 0) {
+      laurerDiffText = `目標の<strong>【${targetLauterName}：${targetLaurerW}kg】</strong>に対して、現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg</span> です。`;
+    } else if (laurerDiff < 0) {
+      laurerDiffText = `目標の<strong>【${targetLauterName}：${targetLaurerW}kg】</strong>に対して、現在 <span style="color:#2563eb; font-weight:bold;">-${Math.abs(laurerDiff)} kg</span> です。`;
+    } else {
+      laurerDiffText = `目標の<strong>【${targetLauterName}】</strong>ぴったりです！🎉`;
+    }
+
+    dietCard.innerHTML = `
+      <div class="diet-target-title">🎒 学校健診・成長期 発育チェック</div>
+      <div style="font-size: 0.9rem; color: #831843; margin-bottom: 6px;">
+        実測: 身長 <strong>${h}cm</strong>・体重 <strong>${w}kg</strong> ｜ ローレル指数: <strong>${lauter.toFixed(1)}</strong>【${判定}】
+      </div>
+      <div style="font-size: 0.85rem; color: #9d174d; margin-bottom: 6px;">${laurerDiffText}</div>
+    `;
+
+    rawLines.push(`・ローレル指数: ${lauter.toFixed(1)} (${判定}) ｜ 実測: ${h}cm / ${w}kg ｜ 目標: ${targetLauterName} (目安: ${targetLaurerW}kg)`);
+    maskedLines.push(`・ローレル指数判定: 【${判定}】 ｜ 目標: ${targetLauterName}`);
+
+    items.push({
+      name: `体型目標 (${targetLauterShort})`,
+      compare: `実測: <strong>${lauter.toFixed(1)}</strong> (体重:${w}kg) ｜ 目標: <strong>${targetLauterVal}</strong> (目安:${targetLaurerW}kg)`,
+      badge: badgeCls,
+      badgeText: badgeTxt,
+      tip: laurer >= 160 ? 'ジュースをお茶に変え、夜遅い間食を控えて元気に外遊びしましょう🏀' : '成長期はしっかり食べて元気に体を動かすことが一番の健康です✨'
+    });
 
     const vr = document.getElementById('vision_r').value;
     const vl = document.getElementById('vision_l').value;
@@ -1356,7 +1352,7 @@ function runAnalysis() {
     }
 
     let dailyDeficit = 350;
-    if (h && w && !isNaN(age) && targetW && currentMode === 'adult') {
+    if (!isNaN(age) && targetW && currentMode === 'adult') {
       let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
       let currentTdee = Math.round(currentBmr * act);
 
@@ -1415,7 +1411,7 @@ function runAnalysis() {
       maskedLines.push(`・PFCバランス目安: P ${pGrams}g / F ${fGrams}g / C ${cGrams}g`);
       maskedLines.push(`・水分補給目標 (飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
 
-    } else if (h && w && !isNaN(age) && currentMode === 'simple') {
+    } else if (!isNaN(age) && currentMode === 'simple') {
       let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
       let currentTdee = Math.round(currentBmr * 1.5);
       let dietCal = Math.max(currentBmr, currentTdee - 350);
@@ -1446,7 +1442,7 @@ function runAnalysis() {
       maskedLines.push(`・減量推奨カロリー: ${dietCal} kcal/日 ｜ 水分補給目標(飲み物): 約 ${(drinkWaterMin/1000).toFixed(1)}〜${(drinkWaterMax/1000).toFixed(1)} L/日`);
     }
 
-    if (h && w && targetW && currentMode === 'adult') {
+    if (targetW && currentMode === 'adult') {
       const bmi = w / Math.pow(h / 100, 2);
       const diff = parseFloat((w - targetW).toFixed(1));
       
@@ -1473,6 +1469,7 @@ function runAnalysis() {
         `;
         roadmapCard.style.display = 'block';
       } else {
+        roadmapCard.style.display = 'none';
         dietText = `現在の体重 <strong>${w}kg</strong> は、目標の【${targetName}】を達成または下回っています！🎉`;
       }
 
@@ -1491,7 +1488,7 @@ function runAnalysis() {
         badgeText: diff <= 0 ? '目標達成 🎯' : `あと -${diff} kg`,
         tip: '算出した推奨摂取カロリーと適度なウォーキングをベースに進めましょう🏃‍♂️'
       });
-    } else if (h && w && currentMode === 'simple') {
+    } else if (currentMode === 'simple') {
       const bmi = w / Math.pow(h / 100, 2);
       dietCard.innerHTML = `
         <div class="diet-target-title">👗 簡易体型サマリー</div>
