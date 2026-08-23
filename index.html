@@ -411,7 +411,7 @@
       line-height: 1.5;
     }
 
-    /* 🖨️ A4最適化 印刷専用スタイル（スマホの画面表示には影響しません） */
+    /* 🖨️ A4最適化 印刷専用スタイル（収まる時は1ページ、溢れる時や改ページ時は見出し頭から2ページ目へ） */
     @media print {
       @page {
         size: A4 portrait;
@@ -489,13 +489,23 @@
         line-height: 1.2 !important;
       }
       
+      /* 📌 収まり切らずに改ページが発生する場合のみ、必ずこの見出しの頭から2ページ目に送る */
       #analysis-section h3 {
         font-size: 0.88rem !important;
         margin-top: 6px !important;
         margin-bottom: 6px !important;
         padding-top: 4px;
-        page-break-before: auto !important;
-        break-before: auto !important;
+        page-break-before: auto;
+        break-before: auto;
+        /* もし1ページ目に収まらない場合は、見出しの前で改ページを許可・促進 */
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      /* 見出しのすぐ直後にある項目リストの最初の要素は、見出しと一緒に次ページへ送る */
+      #analysis-section h3 + #analysis-items {
+        page-break-inside: avoid;
+        break-inside: avoid;
       }
 
       #analysis-items {
