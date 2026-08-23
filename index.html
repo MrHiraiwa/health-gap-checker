@@ -286,6 +286,29 @@
       color: #713f12;
     }
 
+    /* 達成ロードマップカード */
+    .roadmap-card {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .roadmap-title {
+      font-weight: bold;
+      color: #166534;
+      font-size: 0.98rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .roadmap-highlight {
+      font-size: 1.15rem;
+      font-weight: bold;
+      color: #15803d;
+    }
+
     .special-prescription {
       background: #fff1f2;
       border: 1px solid #fecdd3;
@@ -403,7 +426,7 @@
         font-size: 0.8rem;
         color: #64748b;
       }
-      .analysis-item, .calorie-card, .diet-target-card, .special-prescription {
+      .analysis-item, .calorie-card, .diet-target-card, .special-prescription, .roadmap-card {
         border: 1px solid #cbd5e1 !important;
         background: #ffffff !important;
         box-shadow: none !important;
@@ -644,7 +667,7 @@
 
     <div class="btn-group">
       <button type="button" class="btn-clear" onclick="clearData()">全クリア 🗑️</button>
-      <button type="button" class="btn-main" onclick="runAnalysis()">推奨カロリー＆健康処方箋を計算 🚀</button>
+      <button type="button" class="btn-main" onclick="runAnalysis()">推奨カロリー＆期間目安を計算 🚀</button>
     </div>
   </form>
 
@@ -660,9 +683,16 @@
       <button type="button" class="btn-print" onclick="printReport()">印刷 / PDF出力 📄</button>
     </div>
 
+    <!-- カロリー設計 -->
     <div class="calorie-card" id="calorie-result-card"></div>
+
+    <!-- 達成ロードマップ（期間目安） -->
+    <div class="roadmap-card" id="roadmap-result-card" style="display: none;"></div>
+
+    <!-- 体型進捗 -->
     <div class="diet-target-card" id="diet-result-card"></div>
 
+    <!-- 特別リスク処方箋 -->
     <div class="special-prescription" id="special-prescription-card" style="display: none;">
       <div class="prescription-title">⚠️ あなたの健康状態に合わせた安全な減量＆生活処方箋</div>
       <div id="special-prescription-list" style="font-size: 0.88rem; color: #881337;"></div>
@@ -690,7 +720,7 @@ const fields = [
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    const saved = JSON.parse(localStorage.getItem('health_calorie_custom_data_v4') || '{}');
+    const saved = JSON.parse(localStorage.getItem('health_calorie_custom_data_v5') || '{}');
     fields.forEach(id => {
       if (saved[id] !== undefined) document.getElementById(id).value = saved[id];
     });
@@ -726,7 +756,7 @@ function autoSave() {
   const data = { _mode: currentMode };
   fields.forEach(id => data[id] = document.getElementById(id).value);
   try {
-    localStorage.setItem('health_calorie_custom_data_v4', JSON.stringify(data));
+    localStorage.setItem('health_calorie_custom_data_v5', JSON.stringify(data));
     document.getElementById('save-status').innerText = '💾 自動保存中';
   } catch (e) {}
 }
@@ -766,7 +796,7 @@ function importData(event) {
 
 function clearData() {
   if (confirm('入力内容をリセットしますか？')) {
-    try { localStorage.removeItem('health_calorie_custom_data_v4'); } catch (e) {}
+    try { localStorage.removeItem('health_calorie_custom_data_v5'); } catch (e) {}
     fields.forEach(id => {
       if (id === 'gender') document.getElementById(id).value = 'male';
       else if (id === 'activity_level') document.getElementById(id).value = '1.5';
@@ -798,7 +828,6 @@ function runAnalysis() {
   const items = [];
   const prescriptions = [];
 
-  // 目標体重の算出
   let targetW = null;
   let targetName = '標準体重 (BMI 22)';
   if (h) {
@@ -811,19 +840,18 @@ function runAnalysis() {
     if (goalType === 'model') { targetW = parseFloat(modelW); targetName = 'モデル体重 (BMI 18.5)'; }
   }
 
-  // 0. 推奨摂取カロリー & 代謝計算（目標体型に応じた連動計算）
+  // 0. 推奨摂取カロリー & 代謝計算
+  let dailyDeficit = 350; // 1日あたりのアンダーカロリー初期値
   if (h && w && age && targetW) {
-    // 現在体重での基礎代謝・維持カロリー
     let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
     let currentTdee = Math.round(currentBmr * act);
 
-    // 目標体型での基礎代謝・維持カロリー（Target TDEE）
     let targetBmr = Math.round((10 * targetW) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
     let targetTdee = Math.round(targetBmr * act);
 
-    // 安全な減量目標カロリー（現在の維持から-350kcal、または目標体重の維持カロリーの低い方を採用。下限は基礎代謝）
     let dietCal = Math.min(currentTdee - 350, targetTdee);
     dietCal = Math.max(currentBmr, Math.round(dietCal));
+    dailyDeficit = Math.max(100, currentTdee - dietCal);
 
     const calCard = document.getElementById('calorie-result-card');
     calCard.innerHTML = `
@@ -846,28 +874,56 @@ function runAnalysis() {
         </div>
       </div>
       <div style="font-size: 0.78rem; color: #854d0e; margin-top: 8px;">
-        💡 <strong>ポイント:</strong> 目指す体型がスリムになるほど達成後の維持カロリーも低くなります。まずは <strong>${dietCal} kcal/日</strong> を目標にコントロールしましょう。
+        💡 1日あたり <strong>約 -${dailyDeficit} kcal</strong> のアンダーカロリーで、体に負担をかけずに脂肪を燃焼します。
       </div>
     `;
   }
 
-  // 1. 体重 & ダイエット進捗
+  // 1. 体重 & ダイエット進捗 & 期間ロードマップ
   if (h && w && targetW) {
     const bmi = w / Math.pow(h / 100, 2);
     const standardW = (22 * Math.pow(h / 100, 2)).toFixed(1);
     const beautyW = (20 * Math.pow(h / 100, 2)).toFixed(1);
     const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
 
-    const diff = (w - targetW).toFixed(1);
+    const diff = parseFloat((w - targetW).toFixed(1));
     const dietCard = document.getElementById('diet-result-card');
+    const roadmapCard = document.getElementById('roadmap-result-card');
     
     let dietText = '';
     if (diff > 0) {
       dietText = `現在の体重 <strong>${w}kg</strong> は、目標の<strong>【${targetName}：${targetW}kg】</strong>まで <span style="color:#be185d; font-size:1.1rem; font-weight:bold;">あと -${diff} kg</span> の減量が必要です。`;
+
+      // 脂肪1kg = 7,200kcalで期間算出
+      const totalCaloriesNeeded = diff * 7200;
+      const daysNeeded = Math.round(totalCaloriesNeeded / dailyDeficit);
+      const monthsNeeded = (daysNeeded / 30.4).toFixed(1);
+
+      // 目標達成予定日の算出
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + daysNeeded);
+      const targetYear = targetDate.getFullYear();
+      const targetMonth = targetDate.getMonth() + 1;
+
+      roadmapCard.innerHTML = `
+        <div class="roadmap-title">📅 目標達成までのロードマップ（期間目安）</div>
+        <div style="font-size: 0.9rem; color: #14532d; line-height: 1.6;">
+          推奨ペース（1日 -${dailyDeficit}kcal）を継続した場合、<br>
+          あと <span class="roadmap-highlight">約 ${monthsNeeded} ヶ月（約 ${daysNeeded} 日）</span>、
+          <span class="roadmap-highlight">【 ${targetYear}年 ${targetMonth}月頃 】</span>の達成が目安となります✨
+        </div>
+        <div style="font-size: 0.78rem; color: #166534; margin-top: 6px; background: #ffffff; padding: 6px 10px; border-radius: 6px; border: 1px solid #bbf7d0;">
+          💡 <strong>安全なペース:</strong> 月1〜1.5kg減は、筋肉量や基礎代謝を維持し、リバウンドや尿酸値急上昇を防ぐ理想的な減量速度です。
+        </div>
+      `;
+      roadmapCard.style.display = 'block';
+
     } else if (diff < 0) {
       dietText = `現在の体重 <strong>${w}kg</strong> は、目標の【${targetName}：${targetW}kg】を下回っています（-${Math.abs(diff)}kg）。現状維持を推奨します。`;
+      roadmapCard.style.display = 'none';
     } else {
       dietText = `現在の体重 <strong>${w}kg</strong> は、目標の【${targetName}】ぴったりです！🎉`;
+      roadmapCard.style.display = 'none';
     }
 
     dietCard.innerHTML = `
