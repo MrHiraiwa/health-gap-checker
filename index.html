@@ -942,7 +942,7 @@ let latestSummaryData = null;
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v4') || '{}');
+    const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v5') || '{}');
     const initialMode = saved._mode || 'adult';
     
     // 1. 各フィールドの値を復元
@@ -973,6 +973,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function renderActivityOptions(mode, selectedVal) {
   const select = document.getElementById('activity_level');
+  if (!select) return;
   const currentVal = selectedVal || select.value || '1.5';
   select.innerHTML = (mode === 'school') ? schoolActivityOptions : adultActivityOptions;
   select.value = currentVal;
@@ -992,6 +993,7 @@ function switchMode(mode, save = true) {
   const adultWeightGoal = document.getElementById('weight-goal-wrapper');
   const laurerGoal = document.getElementById('laurer-goal-wrapper');
 
+  // 活動量セレクトをモードに合わせて更新
   renderActivityOptions(mode);
 
   if (mode === 'school') {
@@ -1016,6 +1018,9 @@ function switchMode(mode, save = true) {
     laurerGoal.style.display = 'none';
   }
 
+  // 表示エリアを完全にリセットしてから現在のモードで再実行
+  resetAnalysisDisplay();
+
   if (save) {
     autoSave();
     const h = parseFloat(document.getElementById('height').value);
@@ -1026,6 +1031,22 @@ function switchMode(mode, save = true) {
   }
 }
 
+function resetAnalysisDisplay() {
+  const calCard = document.getElementById('calorie-result-card');
+  const roadmapCard = document.getElementById('roadmap-result-card');
+  const dietCard = document.getElementById('diet-result-card');
+  const presCard = document.getElementById('special-prescription-card');
+  const presList = document.getElementById('special-prescription-list');
+  const list = document.getElementById('analysis-items');
+
+  if (calCard) { calCard.style.display = 'none'; calCard.innerHTML = ''; }
+  if (roadmapCard) { roadmapCard.style.display = 'none'; roadmapCard.innerHTML = ''; }
+  if (dietCard) { dietCard.innerHTML = ''; }
+  if (presCard) { presCard.style.display = 'none'; }
+  if (presList) { presList.innerHTML = ''; }
+  if (list) { list.innerHTML = ''; }
+}
+
 function autoSave() {
   const data = { _mode: currentMode };
   fields.forEach(id => {
@@ -1033,7 +1054,7 @@ function autoSave() {
     if (el) data[id] = el.value;
   });
   try {
-    localStorage.setItem('kenshin_pal_data_v4', JSON.stringify(data));
+    localStorage.setItem('kenshin_pal_data_v5', JSON.stringify(data));
   } catch (e) {}
 }
 
@@ -1081,7 +1102,7 @@ function importData(event) {
 function clearData() {
   if (confirm('入力内容をリセットしますか？')) {
     const savedMode = currentMode;
-    try { localStorage.removeItem('kenshin_pal_data_v4'); } catch (e) {}
+    try { localStorage.removeItem('kenshin_pal_data_v5'); } catch (e) {}
     
     fields.forEach(id => {
       const el = document.getElementById(id);
@@ -1157,17 +1178,16 @@ function runAnalysis() {
   const roadmapCard = document.getElementById('roadmap-result-card');
   const dietCard = document.getElementById('diet-result-card');
 
-  calCard.style.display = 'none';
-  calCard.innerHTML = '';
-  roadmapCard.style.display = 'none';
-  roadmapCard.innerHTML = '';
-  dietCard.innerHTML = '';
+  // 表示エリア初期化
+  resetAnalysisDisplay();
 
   const totalWater = Math.round(w * 35);
   const drinkWaterMin = Math.max(1200, Math.round(w * 22));
   const drinkWaterMax = Math.min(3000, Math.round(w * 30));
 
-  // 🎒 未成年・学校健診モード
+  // ==========================================
+  // 🎒 1. 未成年・学校健診モード（排他処理）
+  // ==========================================
   if (currentMode === 'school') {
     if (!isNaN(age) && age > 0) {
       const bmrChild = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
@@ -1344,7 +1364,9 @@ function runAnalysis() {
     }
 
   } else {
-    // 👔 成人モード ＆ 🏠 自宅計測モード
+    // ==========================================
+    // 👔 2. 成人モード ＆ 🏠 自宅計測モード
+    // ==========================================
     let targetW = null;
     let targetShort = '標準 BMI22';
     let targetName = '標準体重 (BMI 22)';
