@@ -222,6 +222,17 @@
       padding: 10px 16px;
       border-radius: 8px;
       margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .print-options {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: #3730a3;
+      font-weight: bold;
+      cursor: pointer;
     }
     .btn-print {
       background: #4338ca;
@@ -532,6 +543,21 @@
         margin-top: 2px !important;
         line-height: 1.25 !important;
       }
+
+      /* 🔏 プライバシー保護モード発動時：具体的な実測数値をマスク */
+      body.hide-private-data .metric-compare {
+        visibility: hidden;
+        position: relative;
+      }
+      body.hide-private-data .metric-compare::after {
+        content: "実測値: [プライバシー保護・非表示]";
+        visibility: visible;
+        position: absolute;
+        left: 4px;
+        top: 2px;
+        color: #475569;
+        font-weight: bold;
+      }
     }
   </style>
 </head>
@@ -769,7 +795,9 @@
     </div>
 
     <div class="print-bar">
-      <span style="font-size: 0.85rem; color: #3730a3; font-weight: bold;">🖨️ 分析レポートを紙やPDFで保存できます</span>
+      <label class="print-options">
+        <input type="checkbox" id="mask-private-checkbox"> 🔏 プライバシー保護（印刷時に体重・実測値を伏せる）
+      </label>
       <button type="button" class="btn-print" onclick="printReport()">印刷 / PDF出力 📄</button>
     </div>
 
@@ -786,7 +814,7 @@
     <div id="analysis-items"></div>
   </div>
 
-  <!-- 💾 デバッグ・バックアップ用ツールバー（ページ最下部） -->
+  <!-- 💾 デバッグ・バックアップ用ツールバー -->
   <div class="bottom-toolbar">
     <span style="color: var(--subtext); font-size: 0.75rem;">⚙️ データ管理・バックアップ</span>
     <div style="display: flex; gap: 6px;">
@@ -931,6 +959,14 @@ function clearData() {
 function printReport() {
   const now = new Date();
   document.getElementById('print-date').innerText = `発行日: ${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+  
+  const isMasked = document.getElementById('mask-private-checkbox').checked;
+  if (isMasked) {
+    document.body.classList.add('hide-private-data');
+  } else {
+    document.body.classList.remove('hide-private-data');
+  }
+
   window.print();
 }
 
