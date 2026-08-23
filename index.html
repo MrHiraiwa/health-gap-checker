@@ -260,15 +260,13 @@
       align-items: center;
       gap: 6px;
     }
+    /* カロリー表示のレスポンシブ対応 */
     .calorie-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
       margin-top: 10px;
       text-align: center;
-    }
-    @media (max-width: 520px) {
-      .calorie-grid { grid-template-columns: 1fr; }
     }
     .calorie-box {
       background: #ffffff;
@@ -284,6 +282,20 @@
     .calorie-box-lbl {
       font-size: 0.75rem;
       color: #713f12;
+    }
+    /* スマホ（幅560px以下）のときは減量カロリーを1段目、維持と基礎代謝を2段目に配置 */
+    @media (max-width: 560px) {
+      .calorie-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .calorie-box:first-child {
+        grid-column: 1 / -1;
+        background: #fffbeb;
+        border: 1.5px solid #fde047;
+      }
+      .calorie-box:first-child .calorie-box-val {
+        font-size: 1.4rem;
+      }
     }
 
     .roadmap-card {
@@ -450,6 +462,10 @@
       .calorie-grid {
         margin-top: 4px !important;
         gap: 6px !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+      }
+      .calorie-box:first-child {
+        grid-column: auto !important;
       }
       .calorie-box {
         padding: 4px !important;
@@ -462,7 +478,6 @@
         font-size: 0.65rem !important;
         line-height: 1.2 !important;
       }
-      /* 項目別リストを2列グリッドにして高さを半分に圧縮 */
       #analysis-items {
         display: grid !important;
         grid-template-columns: 1fr 1fr !important;
@@ -1099,7 +1114,7 @@ function runAnalysis() {
       });
     }
 
-    // 5. 脂質 (LDL & 中性脂肪)
+    // 5. 脂질 (LDL & 中性脂肪)
     if (ldl) {
       const diff = ldl - 119;
       items.push({
