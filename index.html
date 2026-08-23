@@ -26,7 +26,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🩺 健診ギャップ分析 & ダイエット・ヘルス処方箋</title>
+  <title>🩺 検診パル (健診ギャップ分析 & ダイエット処方箋)</title>
   <style>
     :root {
       --primary: #4f46e5;
@@ -42,7 +42,7 @@
       --calorie-border: #fef08a;
     }
     * {
-      box-sizing: border-box; /* はみ出し防止の基本設定 */
+      box-sizing: border-box;
     }
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -61,7 +61,7 @@
       padding: 16px;
       border-radius: 16px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-      overflow-x: hidden; /* スマホで横スクロール/はみ出しを強制カット */
+      overflow-x: hidden;
     }
     h1 {
       font-size: 1.25rem;
@@ -411,7 +411,7 @@
       line-height: 1.5;
     }
 
-    /* 🖨️ A4最適化 超コンパクト印刷スタイル */
+    /* 🖨️ A4最適化 印刷スタイル（自動改ページ対応） */
     @media print {
       @page {
         size: A4 portrait;
@@ -462,6 +462,8 @@
         padding: 6px 10px !important;
         margin-bottom: 6px !important;
         border-radius: 6px !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
       }
       .calorie-title, .roadmap-title, .diet-target-title, .prescription-title {
         font-size: 0.85rem !important;
@@ -488,12 +490,13 @@
       }
       
       #analysis-section h3 {
-        page-break-before: always !important;
-        break-before: page !important;
         font-size: 0.88rem !important;
-        margin-top: 0 !important;
+        margin-top: 6px !important;
         margin-bottom: 6px !important;
         padding-top: 4px;
+        /* 強制的な改ページを外し、収まらなくなった場合だけ自然に改ページ */
+        page-break-before: auto !important;
+        break-before: auto !important;
       }
 
       #analysis-items {
@@ -508,6 +511,7 @@
         margin-bottom: 0 !important;
         border-radius: 6px !important;
         page-break-inside: avoid;
+        break-inside: avoid;
       }
       .item-name {
         font-size: 0.8rem !important;
@@ -534,7 +538,7 @@
 <body>
 
 <div class="container">
-  <h1>🩺 健診ギャップ分析 & ダイエット・ヘルス処方箋</h1>
+  <h1>🩺 検診パル (健診ギャップ分析 & ダイエット処方箋)</h1>
   <div class="subtitle">運動量・基礎代謝に応じた推奨摂取カロリーと、健康リスクに配慮した減量ガイド✨</div>
 
   <div class="privacy-banner">
@@ -768,7 +772,7 @@
   <!-- 分析結果エリア -->
   <div id="analysis-section">
     <div class="report-header-print">
-      <h2>📋 健診ギャップ分析 & パーソナル処方箋レポート</h2>
+      <h2>📋 検診パル 分析レポート</h2>
       <div class="print-date" id="print-date"></div>
     </div>
 
@@ -808,7 +812,7 @@ const fields = [
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    const saved = JSON.parse(localStorage.getItem('health_calorie_custom_data_v5') || '{}');
+    const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v1') || '{}');
     fields.forEach(id => {
       if (saved[id] !== undefined) document.getElementById(id).value = saved[id];
     });
@@ -844,7 +848,7 @@ function autoSave() {
   const data = { _mode: currentMode };
   fields.forEach(id => data[id] = document.getElementById(id).value);
   try {
-    localStorage.setItem('health_calorie_custom_data_v5', JSON.stringify(data));
+    localStorage.setItem('kenshin_pal_data_v1', JSON.stringify(data));
     document.getElementById('save-status').innerText = '💾 自動保存中';
   } catch (e) {}
 }
@@ -856,7 +860,7 @@ function exportData() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `health_check_data_${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `kenshin_pal_data_${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -884,7 +888,7 @@ function importData(event) {
 
 function clearData() {
   if (confirm('入力内容をリセットしますか？')) {
-    try { localStorage.removeItem('health_calorie_custom_data_v5'); } catch (e) {}
+    try { localStorage.removeItem('kenshin_pal_data_v1'); } catch (e) {}
     fields.forEach(id => {
       if (id === 'gender') document.getElementById(id).value = 'male';
       else if (id === 'activity_level') document.getElementById(id).value = '1.5';
@@ -1069,7 +1073,7 @@ function runAnalysis() {
       egfr = parseFloat(egfr.toFixed(1));
 
       if (egfr < 60 || cre > (gender === 'male' ? 1.0 : 0.7)) {
-        prescriptions.push('💧 <strong>腎機能ケア中のダイエット注意点:</strong><br>プロテインの過剰摂取は腎臓に負荷をかけます。タンパク質は適正量（体重×0.8〜1.0g）に留め、<strong>「減塩（1日6g未満）」と「水分補給（目標2〜3L）」</strong>を軸にカロリー調整を行ってください。');
+        prescriptions.push('💧 <strong>腎機能ケア中のダイエット注意点:</strong><br>プロテインの過剰摂取は腎臓に負荷をかけます。タンパク質は適正量（体重×0.8〜1.0g）に留め、<strong>「減塩（1日6g未満）」と<span>「水分補給（目標2〜3L）」</span></strong>を軸にカロリー調整を行ってください。');
       }
 
       items.push({
