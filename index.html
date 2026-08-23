@@ -234,20 +234,26 @@
       font-weight: bold;
       cursor: pointer;
     }
-    .btn-print {
+    .btn-action-group {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-print, .btn-copy {
       background: #4338ca;
       color: #fff;
       border: none;
-      padding: 8px 14px;
+      padding: 8px 12px;
       border-radius: 6px;
       font-weight: bold;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
     }
+    .btn-copy { background: #059669; }
     .btn-print:hover { background: #3730a3; }
+    .btn-copy:hover { background: #047857; }
 
     .report-header-print {
       display: none;
@@ -303,6 +309,24 @@
       .calorie-box:first-child .calorie-box-val {
         font-size: 1.3rem;
       }
+    }
+
+    .pfc-box {
+      margin-top: 10px;
+      background: #ffffff;
+      border: 1px solid #fef08a;
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-around;
+      font-size: 0.78rem;
+      text-align: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .pfc-item strong {
+      color: #b45309;
+      font-size: 0.88rem;
     }
 
     .roadmap-card {
@@ -587,9 +611,9 @@
 
   <!-- モード切替 -->
   <div class="mode-selector">
-    <div id="btn-mode-adult" class="mode-btn active" onclick="switchMode('adult')">👔 成人・一般</div>
-    <div id="btn-mode-simple" class="mode-btn" onclick="switchMode('simple')">⚡ 簡易モード</div>
-    <div id="btn-mode-school" class="mode-btn" onclick="switchMode('school')">🎒 未成年・学校</div>
+    <div id="btn-mode-adult" class="mode-btn active" onclick="switchMode('adult')">👔 成人・一般健診</div>
+    <div id="btn-mode-simple" class="mode-btn" onclick="switchMode('simple')">🏠 自宅計測 (体重・血圧)</div>
+    <div id="btn-mode-school" class="mode-btn" onclick="switchMode('school')">🎒 未成年・学校健診</div>
   </div>
 
   <form id="health-form">
@@ -611,7 +635,7 @@
         <div class="field" style="grid-column: 1 / -1;" id="activity-field-wrapper">
           <label for="activity_level" id="activity_level_label">🏃‍♂️ 日常の活動量・運動量（カロリー計算に使用）</label>
           <select id="activity_level" onchange="autoSave()">
-            <!-- JSで成人用・学童用にオプションを動的切り替え -->
+            <!-- JSで動的切り替え -->
           </select>
         </div>
       </div>
@@ -630,7 +654,7 @@
           <input type="number" id="weight" step="0.1" placeholder="例: 65.0" oninput="autoSave()">
         </div>
         
-        <!-- 成人・一般用 目標選択 -->
+        <!-- 成人用 目標選択 -->
         <div class="field" style="grid-column: 1 / -1;" id="weight-goal-wrapper">
           <label for="weight_goal_type">🎯 目指したい体型目標タイプ (BMI基準)</label>
           <select id="weight_goal_type" onchange="autoSave()">
@@ -640,7 +664,7 @@
           </select>
         </div>
 
-        <!-- 未成年・学校健診用 ローレル指数目標選択 -->
+        <!-- 未成年用 ローレル指数目標選択 -->
         <div class="field" style="grid-column: 1 / -1; display: none;" id="laurer-goal-wrapper">
           <label for="laurer_goal_type">🎯 目指したい発育・体型目標タイプ (ローレル指数基準)</label>
           <select id="laurer_goal_type" onchange="autoSave()">
@@ -695,6 +719,10 @@
 
     <!-- 成人・一般健診専用項目 -->
     <div id="section-adult">
+      <div style="font-size: 0.75rem; color: var(--subtext); margin-bottom: 8px; text-align: right;">
+        💡 手元にある項目だけ入力すればOKです（空欄の項目は自動でスキップされます）
+      </div>
+
       <fieldset>
         <legend>💓 2. 血圧測定</legend>
         <div class="grid">
@@ -815,9 +843,12 @@
 
     <div class="print-bar">
       <label class="print-options">
-        <input type="checkbox" id="mask-private-checkbox"> 🔏 プライバシー保護（印刷時に体重・実測値を伏せる）
+        <input type="checkbox" id="mask-private-checkbox"> 🔏 プライバシー保護（印刷時に数値を伏せる）
       </label>
-      <button type="button" class="btn-print" onclick="printReport()">印刷 / PDF出力 📄</button>
+      <div class="btn-action-group">
+        <button type="button" class="btn-copy" onclick="copyAnalysisText()">結果コピー 📋</button>
+        <button type="button" class="btn-print" onclick="printReport()">印刷 / PDF 📄</button>
+      </div>
     </div>
 
     <div class="calorie-card" id="calorie-result-card" style="display:none;"></div>
@@ -833,7 +864,7 @@
     <div id="analysis-items"></div>
   </div>
 
-  <!-- 💾 デバッグ・バックアップ用ツールバー -->
+  <!-- 💾 データ管理・バックアップ用ツールバー -->
   <div class="bottom-toolbar">
     <span style="color: var(--subtext); font-size: 0.75rem;">⚙️ データ管理・バックアップ</span>
     <div style="display: flex; gap: 6px;">
@@ -872,6 +903,8 @@ const schoolActivityOptions = `
   <option value="1.75">高い (活発な外遊び・体育＋定期的な運動部・スイミング等)</option>
   <option value="2.0">非常に高い (ハードな運動部活動・ジュニアアスリート・毎日激しい運動)</option>
 `;
+
+let latestSummaryText = '';
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
@@ -1019,6 +1052,18 @@ function clearData() {
   }
 }
 
+function copyAnalysisText() {
+  if (!latestSummaryText) {
+    alert('分析結果がありません。');
+    return;
+  }
+  navigator.clipboard.writeText(latestSummaryText).then(() => {
+    alert('診断結果のテキストをコピーしました！📋\nメモ帳やヘルスケア記録にご活用ください✨');
+  }).catch(() => {
+    alert('コピーに失敗しました。ブラウザの権限をご確認ください。');
+  });
+}
+
 function printReport() {
   const now = new Date();
   document.getElementById('print-date').innerText = `発行日: ${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
@@ -1046,16 +1091,19 @@ function runAnalysis() {
 
   const items = [];
   const prescriptions = [];
+  let summaryLines = [`【検診パル 分析サマリー】 (${new Date().toLocaleDateString()})`];
 
   const calCard = document.getElementById('calorie-result-card');
   const roadmapCard = document.getElementById('roadmap-result-card');
   const dietCard = document.getElementById('diet-result-card');
 
+  // 水分補給目安 (体重×約35ml、下限2000ml〜上限3000ml)
+  let waterTarget = w ? Math.min(3000, Math.max(2000, Math.round(w * 35))) : 2000;
+
   // 🎒 未成年・学校健診モード
   if (currentMode === 'school') {
     calCard.style.display = 'block';
 
-    // 成長期の推奨エネルギー量
     if (h && w && age) {
       let bmrChild = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
       let recCalChild = Math.round(bmrChild * act);
@@ -1071,7 +1119,12 @@ function runAnalysis() {
             <div class="calorie-box-lbl">🌱 成長期 推奨摂取カロリー (活動レベル${act})<br>（3食バランスよくしっかり食べましょう）</div>
           </div>
         </div>
+        <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px;">
+          💧 <strong>1日の水分補給目安:</strong> 約 <strong>${waterTarget} ml</strong>（こまめな水分補給を習慣にしましょう）
+        </div>
       `;
+      summaryLines.push(`・成長期推奨カロリー: ${recCalChild} kcal/日`);
+      summaryLines.push(`・推奨水分目安: 約 ${waterTarget} ml/日`);
     }
 
     if (h && w) {
@@ -1098,7 +1151,6 @@ function runAnalysis() {
       else if (lauter >= 160 && lauter < 190) { 判定 = '軽度太め (適度な運動・外遊びを推奨)'; badgeCls = 'gap-warning'; badgeTxt = 'やや太め'; }
       else if (lauter >= 190) { 判定 = '肥満傾向 (生活習慣や食生活の見直しを推奨)'; badgeCls = 'gap-alert'; badgeTxt = '要生活改善'; }
 
-      // 身長成長ロードマップ
       const neededHeightForCurrentWeight = Math.cbrt((w * 10000000) / targetLauterVal).toFixed(1);
       const heightGrowthNeeded = (neededHeightForCurrentWeight - h).toFixed(1);
 
@@ -1133,10 +1185,9 @@ function runAnalysis() {
           実測: 身長 <strong>${h}cm</strong>・体重 <strong>${w}kg</strong> ｜ ローレル指数: <strong>${lauter.toFixed(1)}</strong>【${判定}】
         </div>
         <div style="font-size: 0.85rem; color: #9d174d; margin-bottom: 6px;">${laurerDiffText}</div>
-        <div style="font-size: 0.78rem; color: #9d174d; background: #fff; padding: 6px 10px; border-radius: 6px;">
-          💡 <strong>成長期のお子様へ:</strong> 無理なダイエットは成長の妨げになります。3食しっかり栄養を摂り、運動と睡眠を大切にしましょう🏃‍♂️✨
-        </div>
       `;
+
+      summaryLines.push(`・ローレル指数: ${lauter.toFixed(1)} (${判定}) ｜ 目標: ${targetLauterName}`);
 
       items.push({
         name: `ローレル指数 ＆ 目標 (${targetLauterName})`,
@@ -1147,7 +1198,6 @@ function runAnalysis() {
       });
     }
 
-    // 視力検査
     const vr = document.getElementById('vision_r').value;
     const vl = document.getElementById('vision_l').value;
     items.push({
@@ -1158,7 +1208,6 @@ function runAnalysis() {
       tip: (vr !== 'A' || vl !== 'A') ? '黒板が見えにくい場合は眼科での再検査や眼鏡調整を検討してください👓' : '良好です！'
     });
 
-    // 尿タンパク検査
     const up = document.getElementById('urine_protein').value;
     let upBadge = 'gap-achieved';
     let upText = '陰性 (-) 正常 🎯';
@@ -1170,14 +1219,13 @@ function runAnalysis() {
       compare: `検査結果: <strong>${up}</strong> ｜ 推奨: <strong>（-）陰性</strong>`,
       badge: upBadge,
       badgeText: upText,
-      tip: up === '-' ? '異常なしです✨' : '激しい運動や発熱の影響もありますが、陽性が続く場合は医療機関で再検査（早朝尿検査）を受けましょう。'
+      tip: up === '-' ? '異常なしです✨' : '激しい運動や発熱の影響もありますが、陽性が続く場合は医療機関で再検査を受けましょう。'
     });
 
     if (up === '+' || up === '2+') {
       prescriptions.push('💧 <strong>学校検尿で尿タンパク陽性:</strong> 激しい運動を控え、医療機関での再検査（早朝尿検査）を受けましょう。');
     }
 
-    // 尿糖検査
     const us = document.getElementById('urine_sugar').value;
     items.push({
       name: '学校検尿: 尿糖',
@@ -1192,7 +1240,7 @@ function runAnalysis() {
     }
 
   } else {
-    // 👔 成人モード ＆ ⚡ 簡易モード
+    // 👔 成人モード ＆ 🏠 自宅計測モード
     calCard.style.display = 'block';
 
     let targetW = null;
@@ -1219,6 +1267,14 @@ function runAnalysis() {
       dietCal = Math.max(currentBmr, Math.round(dietCal));
       dailyDeficit = Math.max(100, currentTdee - dietCal);
 
+      // PFCバランス計算 (P: 体重×1.0g [4kcal/g], F: 22.5% [9kcal/g], C: 残り [4kcal/g])
+      let pGrams = Math.round(w * 1.0);
+      let pCal = pGrams * 4;
+      let fCal = Math.round(dietCal * 0.225);
+      let fGrams = Math.round(fCal / 9);
+      let cCal = Math.max(0, dietCal - pCal - fCal);
+      let cGrams = Math.round(cCal / 4);
+
       calCard.innerHTML = `
         <div class="calorie-title">🔥 エネルギー消費 & 推奨摂取カロリー（${targetName} 連動）</div>
         <div style="font-size: 0.88rem; color: #713f12;">
@@ -1235,20 +1291,33 @@ function runAnalysis() {
           </div>
           <div class="calorie-box">
             <div class="calorie-box-val">${currentBmr} <span style="font-size:0.8rem;">kcal</span></div>
-            <div class="calorie-box-lbl">⚠️ 現在の基礎代謝 (下限)<br>(これ以下は筋肉減少・代謝低下)</div>
+            <div class="calorie-box-lbl">⚠️ 現在の基礎代謝 (下限)<br>(これ以下は筋肉減少)</div>
           </div>
         </div>
-        <div style="font-size: 0.78rem; color: #854d0e; margin-top: 8px;">
-          💡 1日あたり <strong>約 -${dailyDeficit} kcal</strong> のアンダーカロリーで、体に負担をかけずに脂肪を燃焼します。
+
+        <div class="pfc-box">
+          <div class="pfc-item">🥩 タンパク質 (P): <strong>${pGrams} g</strong> (${pCal}kcal)</div>
+          <div class="pfc-item">🥑 脂質 (F): <strong>${fGrams} g</strong> (${fCal}kcal)</div>
+          <div class="pfc-item">🍚 炭水化物 (C): <strong>${cGrams} g</strong> (${cCal}kcal)</div>
+        </div>
+
+        <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px; display:flex; justify-content:space-between; flex-wrap:wrap;">
+          <span>💧 <strong>推奨水分目安:</strong> 約 <strong>${waterTarget} ml / 日</strong></span>
+          <span>⚖️ <strong>アンダーカロリー:</strong> 1日あたり約 <strong>-${dailyDeficit} kcal</strong></span>
         </div>
       `;
+
+      summaryLines.push(`・減量推奨カロリー: ${dietCal} kcal/日 (維持: ${targetTdee} kcal, 基礎代謝: ${currentBmr} kcal)`);
+      summaryLines.push(`・PFCバランス目安: P ${pGrams}g / F ${fGrams}g / C ${cGrams}g`);
+      summaryLines.push(`・推奨水分目安: 約 ${waterTarget} ml/日`);
+
     } else if (h && w && age && currentMode === 'simple') {
       let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
       let currentTdee = Math.round(currentBmr * 1.5);
       let dietCal = Math.max(currentBmr, currentTdee - 350);
 
       calCard.innerHTML = `
-        <div class="calorie-title">🔥 簡易モード 推奨カロリー設計</div>
+        <div class="calorie-title">🏠 自宅計測モード 推奨カロリー設計</div>
         <div class="calorie-grid">
           <div class="calorie-box">
             <div class="calorie-box-val">${dietCal} <span style="font-size:0.8rem;">kcal</span></div>
@@ -1263,15 +1332,15 @@ function runAnalysis() {
             <div class="calorie-box-lbl">⚠️ 基礎代謝 (下限)</div>
           </div>
         </div>
+        <div style="font-size: 0.78rem; color: #1e40af; margin-top: 8px;">
+          💧 <strong>推奨水分目安:</strong> 約 <strong>${waterTarget} ml / 日</strong>
+        </div>
       `;
+      summaryLines.push(`・減量推奨カロリー: ${dietCal} kcal/日 ｜ 推奨水分: 約 ${waterTarget} ml/日`);
     }
 
     if (h && w && targetW && currentMode === 'adult') {
       const bmi = w / Math.pow(h / 100, 2);
-      const standardW = (22 * Math.pow(h / 100, 2)).toFixed(1);
-      const beautyW = (20 * Math.pow(h / 100, 2)).toFixed(1);
-      const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
-
       const diff = parseFloat((w - targetW).toFixed(1));
       
       let dietText = '';
@@ -1306,6 +1375,8 @@ function runAnalysis() {
         <div style="font-size: 0.9rem; color: #831843; margin-bottom: 8px;">${dietText}</div>
       `;
 
+      summaryLines.push(`・体重進捗: 実測 ${w}kg (BMI ${bmi.toFixed(1)}) ｜ 目標 ${targetName} (${targetW}kg / 差分: ${diff > 0 ? '-' + diff + 'kg' : '達成'})`);
+
       items.push({
         name: `体重 ＆ 体型進捗 (${targetName})`,
         compare: `実測: <strong>${w} kg</strong> (BMI: ${bmi.toFixed(1)}) ｜ 選択目標: <strong>${targetW} kg</strong>`,
@@ -1320,13 +1391,15 @@ function runAnalysis() {
         <div style="font-size: 0.9rem; color: #831843;">現在のBMI: <strong>${bmi.toFixed(1)}</strong> (身長:${h}cm / 体重:${w}kg)</div>
       `;
       roadmapCard.style.display = 'none';
+      summaryLines.push(`・体型: 身長 ${h}cm / 体重 ${w}kg (BMI ${bmi.toFixed(1)})`);
     }
 
-    // 血圧（成人・簡易共通）
+    // 血圧（成人・自宅計測共通）
     const sbp = parseFloat(document.getElementById('sbp').value);
     const dbp = parseFloat(document.getElementById('dbp').value);
     if (sbp || dbp) {
       const maxDiff = Math.max(sbp ? sbp - 120 : 0, dbp ? dbp - 80 : 0);
+      summaryLines.push(`・血圧: ${sbp || '-'}/${dbp || '-'} mmHg (推奨 120/80未満)`);
       items.push({
         name: '血圧 (収縮期 / 拡張期)',
         compare: `実測: <strong>${sbp || '-'} / ${dbp || '-'} mmHg</strong> ｜ 推奨: <strong>120/80 未満</strong>`,
@@ -1334,6 +1407,9 @@ function runAnalysis() {
         badgeText: maxDiff <= 0 ? '正常血圧 🎯' : `目標まで +${maxDiff} mmHg`,
         tip: '減塩と有酸素運動が効果的です🧂'
       });
+      if (sbp >= 130 || dbp >= 85) {
+        prescriptions.push('💓 <strong>血圧高めのダイエット注意点:</strong><br>息を止めて力む筋トレは避け、ウォーキング等の有酸素運動を中心に行いましょう。食事は減塩を徹底し、カリウム（野菜類）を意識してください。');
+      }
     }
 
     // 👔 成人・一般モードのみ血液検査項目を処理
@@ -1356,6 +1432,8 @@ function runAnalysis() {
           prescriptions.push('💧 <strong>腎機能ケア中のダイエット注意点:</strong><br>プロテインの過剰摂取は控え、<strong>減塩（6g未満）と水分補給（2〜3L）</strong>を軸にしてください。');
         }
 
+        summaryLines.push(`・腎機能 eGFR: ${egfr} (CRE: ${cre} mg/dL) ｜ 推奨 60.0以上`);
+
         items.push({
           name: '腎機能 (eGFR)',
           compare: `実測: <strong>${egfr} mL/分/1.73㎡</strong> (CRE: ${cre}) ｜ 推奨: <strong>60.0 以上</strong>`,
@@ -1371,6 +1449,7 @@ function runAnalysis() {
       }
       if (alt || gtp) {
         const isWarn = (alt && alt > 30) || (gtp && gtp > gtpTarget);
+        summaryLines.push(`・肝機能: ALT ${alt || '-'} / γ-GTP ${gtp || '-'} U/L`);
         items.push({
           name: '肝機能 (ALT / γ-GTP)',
           compare: `実測: <strong>ALT:${alt || '-'} / γ-GTP:${gtp || '-'}</strong> ｜ 推奨: <strong>ALT30以下 / γ-GTP${gtpTarget}以下</strong>`,
@@ -1385,6 +1464,7 @@ function runAnalysis() {
       }
       if (ua) {
         const diff = (ua - 6.0).toFixed(1);
+        summaryLines.push(`・尿酸値: ${ua} mg/dL ｜ 理想目標 6.0以下`);
         items.push({
           name: '尿酸値 (UA)',
           compare: `実測: <strong>${ua} mg/dL</strong> ｜ 推奨: <strong>6.0 以下</strong>`,
@@ -1396,6 +1476,7 @@ function runAnalysis() {
 
       if (ldl) {
         const diff = ldl - 119;
+        summaryLines.push(`・LDLコレステロール: ${ldl} mg/dL ｜ 推奨 119以下`);
         items.push({
           name: 'LDLコレステロール',
           compare: `実測: <strong>${ldl} mg/dL</strong> ｜ 推奨: <strong>119 以下</strong>`,
@@ -1406,6 +1487,7 @@ function runAnalysis() {
       }
       if (tg) {
         const diff = tg - 149;
+        summaryLines.push(`・中性脂肪: ${tg} mg/dL ｜ 推奨 149以下`);
         items.push({
           name: '中性脂肪 (TG)',
           compare: `実測: <strong>${tg} mg/dL</strong> ｜ 推奨: <strong>149 以下</strong>`,
@@ -1419,6 +1501,7 @@ function runAnalysis() {
         let desc = [];
         if (bs) desc.push(`血糖値:${bs}`);
         if (hba1c) desc.push(`HbA1c:${hba1c}%`);
+        summaryLines.push(`・糖代謝: ${desc.join(' / ')}`);
         items.push({
           name: '糖代謝',
           compare: `実測: <strong>${desc.join(' ｜ ')}</strong>`,
@@ -1455,6 +1538,7 @@ function runAnalysis() {
     list.appendChild(card);
   });
 
+  latestSummaryText = summaryLines.join('\n');
   document.getElementById('analysis-section').style.display = 'block';
 }
 </script>
