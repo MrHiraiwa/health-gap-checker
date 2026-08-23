@@ -249,7 +249,7 @@
       border: 1px solid var(--calorie-border);
       border-radius: 12px;
       padding: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .calorie-title {
       font-weight: bold;
@@ -286,13 +286,12 @@
       color: #713f12;
     }
 
-    /* 達成ロードマップカード */
     .roadmap-card {
       background: #f0fdf4;
       border: 1px solid #bbf7d0;
       border-radius: 12px;
       padding: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .roadmap-title {
       font-weight: bold;
@@ -314,7 +313,7 @@
       border: 1px solid #fecdd3;
       border-radius: 12px;
       padding: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .prescription-title {
       font-weight: bold;
@@ -327,7 +326,7 @@
       border: 1px solid #fbcfe8;
       border-radius: 12px;
       padding: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .diet-target-title {
       font-weight: bold;
@@ -335,13 +334,16 @@
       font-size: 0.95rem;
       margin-bottom: 8px;
     }
+    #analysis-items {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
     .analysis-item {
       border: 1px solid var(--border);
       background: #fff;
       border-radius: 10px;
       padding: 12px 16px;
-      margin-bottom: 10px;
-      page-break-inside: avoid;
     }
     .item-header {
       display: flex;
@@ -389,12 +391,19 @@
       line-height: 1.5;
     }
 
+    /* 🖨️ A4最適化 超コンパクト印刷スタイル */
     @media print {
+      @page {
+        size: A4 portrait;
+        margin: 10mm;
+      }
       body {
         background-color: #ffffff;
         padding: 0;
         margin: 0;
         color: #000000;
+        font-size: 9pt;
+        line-height: 1.35;
       }
       .container {
         box-shadow: none;
@@ -402,7 +411,7 @@
         max-width: 100%;
         border: none;
       }
-      .privacy-banner, .toolbar, .mode-selector, #health-form, .btn-group, .print-bar, .app-footer {
+      .privacy-banner, .toolbar, .mode-selector, #health-form, .btn-group, .print-bar, .app-footer, h1, .subtitle {
         display: none !important;
       }
       #analysis-section {
@@ -412,27 +421,84 @@
       .report-header-print {
         display: flex;
         justify-content: space-between;
-        align-items: flex-end;
-        border-bottom: 2px solid #334155;
-        padding-bottom: 8px;
-        margin-bottom: 16px;
+        align-items: baseline;
+        border-bottom: 1.5px solid #334155;
+        padding-bottom: 4px;
+        margin-bottom: 8px;
       }
       .report-header-print h2 {
         margin: 0;
-        font-size: 1.3rem;
+        font-size: 1.1rem;
         color: #1e293b;
       }
       .report-header-print .print-date {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: #64748b;
       }
-      .analysis-item, .calorie-card, .diet-target-card, .special-prescription, .roadmap-card {
+      .calorie-card, .diet-target-card, .special-prescription, .roadmap-card {
         border: 1px solid #cbd5e1 !important;
         background: #ffffff !important;
         box-shadow: none !important;
+        padding: 6px 10px !important;
+        margin-bottom: 6px !important;
+        border-radius: 6px !important;
+      }
+      .calorie-title, .roadmap-title, .diet-target-title, .prescription-title {
+        font-size: 0.85rem !important;
+        margin-bottom: 4px !important;
+      }
+      .calorie-grid {
+        margin-top: 4px !important;
+        gap: 6px !important;
+      }
+      .calorie-box {
+        padding: 4px !important;
+        border-radius: 4px !important;
+      }
+      .calorie-box-val {
+        font-size: 0.95rem !important;
+      }
+      .calorie-box-lbl {
+        font-size: 0.65rem !important;
+        line-height: 1.2 !important;
+      }
+      /* 項目別リストを2列グリッドにして高さを半分に圧縮 */
+      #analysis-items {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 6px !important;
+      }
+      .analysis-item {
+        border: 1px solid #cbd5e1 !important;
+        background: #ffffff !important;
+        padding: 6px 8px !important;
+        margin-bottom: 0 !important;
+        border-radius: 6px !important;
+        page-break-inside: avoid;
+      }
+      .item-name {
+        font-size: 0.8rem !important;
       }
       .gap-badge {
+        font-size: 0.65rem !important;
+        padding: 1px 5px !important;
         border: 1px solid #94a3b8;
+      }
+      .metric-compare {
+        font-size: 0.72rem !important;
+        padding: 2px 4px !important;
+        margin-bottom: 2px !important;
+      }
+      .action-tip {
+        font-size: 0.7rem !important;
+        padding: 3px 6px !important;
+        margin-top: 2px !important;
+        line-height: 1.25 !important;
+      }
+      h3 {
+        font-size: 0.88rem !important;
+        margin-top: 6px !important;
+        margin-bottom: 4px !important;
       }
     }
   </style>
@@ -683,22 +749,16 @@
       <button type="button" class="btn-print" onclick="printReport()">印刷 / PDF出力 📄</button>
     </div>
 
-    <!-- カロリー設計 -->
     <div class="calorie-card" id="calorie-result-card"></div>
-
-    <!-- 達成ロードマップ（期間目安） -->
     <div class="roadmap-card" id="roadmap-result-card" style="display: none;"></div>
-
-    <!-- 体型進捗 -->
     <div class="diet-target-card" id="diet-result-card"></div>
 
-    <!-- 特別リスク処方箋 -->
     <div class="special-prescription" id="special-prescription-card" style="display: none;">
       <div class="prescription-title">⚠️ あなたの健康状態に合わせた安全な減量＆生活処方箋</div>
       <div id="special-prescription-list" style="font-size: 0.88rem; color: #881337;"></div>
     </div>
 
-    <h3 style="margin-bottom: 12px; font-size: 1.05rem;">📊 健診項目別 ギャップ詳細</h3>
+    <h3 style="margin-bottom: 8px; font-size: 1rem;">📊 健診項目別 ギャップ詳細</h3>
     <div id="analysis-items"></div>
   </div>
 
@@ -841,7 +901,7 @@ function runAnalysis() {
   }
 
   // 0. 推奨摂取カロリー & 代謝計算
-  let dailyDeficit = 350; // 1日あたりのアンダーカロリー初期値
+  let dailyDeficit = 350;
   if (h && w && age && targetW) {
     let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
     let currentTdee = Math.round(currentBmr * act);
@@ -894,12 +954,10 @@ function runAnalysis() {
     if (diff > 0) {
       dietText = `現在の体重 <strong>${w}kg</strong> は、目標の<strong>【${targetName}：${targetW}kg】</strong>まで <span style="color:#be185d; font-size:1.1rem; font-weight:bold;">あと -${diff} kg</span> の減量が必要です。`;
 
-      // 脂肪1kg = 7,200kcalで期間算出
       const totalCaloriesNeeded = diff * 7200;
       const daysNeeded = Math.round(totalCaloriesNeeded / dailyDeficit);
       const monthsNeeded = (daysNeeded / 30.4).toFixed(1);
 
-      // 目標達成予定日の算出
       const targetDate = new Date();
       targetDate.setDate(targetDate.getDate() + daysNeeded);
       const targetYear = targetDate.getFullYear();
@@ -1084,7 +1142,7 @@ function runAnalysis() {
   const presCard = document.getElementById('special-prescription-card');
   const presList = document.getElementById('special-prescription-list');
   if (prescriptions.length > 0) {
-    presList.innerHTML = prescriptions.map(p => `<div style="margin-bottom: 8px; line-height: 1.5;">${p}</div>`).join('');
+    presList.innerHTML = prescriptions.map(p => `<div style="margin-bottom: 4px; line-height: 1.4;">${p}</div>`).join('');
     presCard.style.display = 'block';
   } else {
     presCard.style.display = 'none';
