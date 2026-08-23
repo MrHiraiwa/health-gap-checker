@@ -544,7 +544,6 @@
         line-height: 1.25 !important;
       }
 
-      /* 🔏 プライバシー保護モード発動時：体重・実測数値をすべてマスク */
       body.hide-private-data .metric-compare,
       body.hide-private-data #diet-result-card div[style*="font-size: 0.9rem"] {
         visibility: hidden;
@@ -632,12 +631,24 @@
           <label for="weight">体重 (kg)</label>
           <input type="number" id="weight" step="0.1" placeholder="例: 65.0" oninput="autoSave()">
         </div>
+        
+        <!-- 成人・一般用 目標選択 -->
         <div class="field" style="grid-column: 1 / -1;" id="weight-goal-wrapper">
-          <label for="weight_goal_type">🎯 目指したい体型目標タイプ</label>
+          <label for="weight_goal_type">🎯 目指したい体型目標タイプ (BMI基準)</label>
           <select id="weight_goal_type" onchange="autoSave()">
             <option value="standard">標準体重 (BMI 22: 最も病気になりにくい健康体型)</option>
             <option value="beauty">美容体重 (BMI 20: スッキリ見えて服が綺麗に着こなせる体型)</option>
             <option value="model">モデル体重 (BMI 18.5: スリム体型 / 下限ギリギリ)</option>
+          </select>
+        </div>
+
+        <!-- 未成年・学校健診用 ローレル指数目標選択 -->
+        <div class="field" style="grid-column: 1 / -1; display: none;" id="laurer-goal-wrapper">
+          <label for="laurer_goal_type">🎯 目指したい発育・体型目標タイプ (ローレル指数基準)</label>
+          <select id="laurer_goal_type" onchange="autoSave()">
+            <option value="standard">標準発育 (ローレル指数 130: バランスの良い理想の成長体型)</option>
+            <option value="slim">スッキリ体型 (ローレル指数 115: 正常域下限・スリム寄り)</option>
+            <option value="upper">ふくよか許容上限 (ローレル指数 145: 正常域上限)</option>
           </select>
         </div>
       </div>
@@ -845,7 +856,7 @@
 <script>
 let currentMode = 'adult'; // 'adult', 'simple', 'school'
 const fields = [
-  'gender', 'age', 'activity_level', 'height', 'weight', 'weight_goal_type',
+  'gender', 'age', 'activity_level', 'height', 'weight', 'weight_goal_type', 'laurer_goal_type',
   'vision_r', 'vision_l', 'urine_protein', 'urine_sugar',
   'sbp', 'dbp', 'ldl', 'tg', 'bs', 'hba1c', 'alt', 'gtp', 'creatinine', 'ua'
 ];
@@ -854,7 +865,7 @@ window.addEventListener('DOMContentLoaded', () => {
   try {
     const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v2') || '{}');
     fields.forEach(id => {
-      if (saved[id] !== undefined) document.getElementById(id).value = saved[id];
+      if (saved[id] !== undefined && document.getElementById(id)) document.getElementById(id).value = saved[id];
     });
     if (saved._mode) switchMode(saved._mode, false);
     if (Object.keys(saved).length > 0) runAnalysis();
@@ -883,23 +894,29 @@ function switchMode(mode, save = true) {
   const schoolSection = document.getElementById('section-school');
   const bloodTestFields = document.querySelectorAll('.full-blood-test');
   const activityField = document.getElementById('activity-field-wrapper');
-  const weightGoal = document.getElementById('weight-goal-wrapper');
+  const adultWeightGoal = document.getElementById('weight-goal-wrapper');
+  const laurerGoal = document.getElementById('laurer-goal-wrapper');
 
   if (mode === 'school') {
     adultSection.style.display = 'none';
     schoolSection.style.display = 'block';
+    activityField.style.display = 'none';
+    adultWeightGoal.style.display = 'none';
+    laurerGoal.style.display = 'flex';
   } else if (mode === 'simple') {
     adultSection.style.display = 'block';
     schoolSection.style.display = 'none';
     bloodTestFields.forEach(el => el.style.display = 'none');
     activityField.style.display = 'none';
-    weightGoal.style.display = 'none';
+    adultWeightGoal.style.display = 'none';
+    laurerGoal.style.display = 'none';
   } else {
     adultSection.style.display = 'block';
     schoolSection.style.display = 'none';
     bloodTestFields.forEach(el => el.style.display = 'block');
     activityField.style.display = 'flex';
-    weightGoal.style.display = 'flex';
+    adultWeightGoal.style.display = 'flex';
+    laurerGoal.style.display = 'none';
   }
 
   if (save) {
@@ -912,7 +929,10 @@ function switchMode(mode, save = true) {
 
 function autoSave() {
   const data = { _mode: currentMode };
-  fields.forEach(id => data[id] = document.getElementById(id).value);
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) data[id] = el.value;
+  });
   try {
     localStorage.setItem('kenshin_pal_data_v2', JSON.stringify(data));
   } catch (e) {}
@@ -920,7 +940,10 @@ function autoSave() {
 
 function exportData() {
   const data = { _mode: currentMode };
-  fields.forEach(id => data[id] = document.getElementById(id).value);
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) data[id] = el.value;
+  });
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -938,7 +961,8 @@ function importData(event) {
     try {
       const data = JSON.parse(e.target.result);
       fields.forEach(id => {
-        if (data[id] !== undefined) document.getElementById(id).value = data[id];
+        const el = document.getElementById(id);
+        if (el && data[id] !== undefined) el.value = data[id];
       });
       if (data._mode) switchMode(data._mode, false);
       autoSave();
@@ -955,12 +979,15 @@ function clearData() {
   if (confirm('入力内容をリセットしますか？')) {
     try { localStorage.removeItem('kenshin_pal_data_v2'); } catch (e) {}
     fields.forEach(id => {
-      if (id === 'gender') document.getElementById(id).value = 'male';
-      else if (id === 'activity_level') document.getElementById(id).value = '1.5';
-      else if (id === 'weight_goal_type') document.getElementById(id).value = 'standard';
-      else if (id.startsWith('vision')) document.getElementById(id).value = 'A';
-      else if (id.startsWith('urine')) document.getElementById(id).value = '-';
-      else document.getElementById(id).value = '';
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (id === 'gender') el.value = 'male';
+      else if (id === 'activity_level') el.value = '1.5';
+      else if (id === 'weight_goal_type') el.value = 'standard';
+      else if (id === 'laurer_goal_type') el.value = 'standard';
+      else if (id.startsWith('vision')) el.value = 'A';
+      else if (id.startsWith('urine')) el.value = '-';
+      else el.value = '';
     });
     document.getElementById('analysis-section').style.display = 'none';
   }
@@ -989,6 +1016,7 @@ function runAnalysis() {
   const h = parseFloat(document.getElementById('height').value);
   const w = parseFloat(document.getElementById('weight').value);
   const goalType = document.getElementById('weight_goal_type').value;
+  const laurerGoalType = document.getElementById('laurer_goal_type').value;
 
   const items = [];
   const prescriptions = [];
@@ -1004,6 +1032,20 @@ function runAnalysis() {
 
     if (h && w) {
       const lauter = (w / Math.pow(h, 3)) * 10000000;
+      let targetLauterVal = 130;
+      let targetLauterName = '標準発育 (ローレル指数 130)';
+
+      if (laurerGoalType === 'slim') {
+        targetLauterVal = 115;
+        targetLauterName = 'スッキリ体型 (ローレル指数 115)';
+      } else if (laurerGoalType === 'upper') {
+        targetLauterVal = 145;
+        targetLauterName = 'ふくよか許容上限 (ローレル指数 145)';
+      }
+
+      const targetLaurerW = parseFloat(((targetLauterVal * Math.pow(h, 3)) / 10000000).toFixed(1));
+      const laurerDiff = parseFloat((w - targetLaurerW).toFixed(1));
+
       let 判定 = '標準 (発育良好)';
       let badgeCls = 'gap-achieved';
       let badgeTxt = '正常域 🎯';
@@ -1012,20 +1054,29 @@ function runAnalysis() {
       else if (lauter >= 160 && lauter < 190) { 判定 = '軽度太め (適度な運動・外遊びを推奨)'; badgeCls = 'gap-warning'; badgeTxt = 'やや太め'; }
       else if (lauter >= 190) { 判定 = '肥満傾向 (生活習慣や食生活の見直しを推奨)'; badgeCls = 'gap-alert'; badgeTxt = '要生活改善'; }
 
+      let laurerDiffText = '';
+      if (laurerDiff > 0) {
+        laurerDiffText = `目標の<strong>【${targetLauterName}：${targetLaurerW}kg】</strong>に対して、現在 <span style="color:#be185d; font-weight:bold;">+${laurerDiff} kg</span> です。`;
+      } else if (laurerDiff < 0) {
+        laurerDiffText = `目標の<strong>【${targetLauterName}：${targetLaurerW}kg】</strong>に対して、現在 <span style="color:#2563eb; font-weight:bold;">-${Math.abs(laurerDiff)} kg</span> です。`;
+      } else {
+        laurerDiffText = `目標の<strong>【${targetLauterName}】</strong>ぴったりです！🎉`;
+      }
+
       dietCard.innerHTML = `
         <div class="diet-target-title">🎒 学校健診・成長期 発育チェック</div>
-        <div style="font-size: 0.9rem; color: #831843; margin-bottom: 8px;">
-          身長 <strong>${h}cm</strong>・体重 <strong>${w}kg</strong> のローレル指数は <strong>${lauter.toFixed(1)}</strong> です。<br>
-          判定: <strong style="color: #be185d;">【${判定}】</strong>
+        <div style="font-size: 0.9rem; color: #831843; margin-bottom: 6px;">
+          実測: 身長 <strong>${h}cm</strong>・体重 <strong>${w}kg</strong> ｜ ローレル指数: <strong>${lauter.toFixed(1)}</strong>【${判定}】
         </div>
-        <div style="font-size: 0.8rem; color: #9d174d; background: #fff; padding: 6px 10px; border-radius: 6px;">
-          💡 <strong>成長期のお子様へ:</strong> 過度な食事制限や減量は絶対に避け、バランスの良い食事と十分な睡眠・運動を心がけましょう！
+        <div style="font-size: 0.85rem; color: #9d174d; margin-bottom: 6px;">${laurerDiffText}</div>
+        <div style="font-size: 0.78rem; color: #9d174d; background: #fff; padding: 6px 10px; border-radius: 6px;">
+          💡 <strong>成長期のお子様へ:</strong> 無理なダイエットは成長の妨げになります。3食しっかり栄養を摂り、運動と睡眠を大切にしましょう🏃‍♂️✨
         </div>
       `;
 
       items.push({
-        name: 'ローレル指数 (成長期発育評価)',
-        compare: `実測値: <strong>${lauter.toFixed(1)}</strong> ｜ 標準目安: <strong>115 〜 145</strong>`,
+        name: `ローレル指数 ＆ 目標 (${targetLauterName})`,
+        compare: `実測: <strong>${lauter.toFixed(1)}</strong> (体重:${w}kg) ｜ 目標: <strong>${targetLauterVal}</strong> (目安:${targetLaurerW}kg)`,
         badge: badgeCls,
         badgeText: badgeTxt,
         tip: '成長期はしっかり食べて元気に体を動かすことが一番の健康です🏀'
