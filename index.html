@@ -942,18 +942,18 @@ let latestSummaryData = null;
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v2') || '{}');
+    const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v3') || '{}');
     const initialMode = saved._mode || 'adult';
     
-    // 1. 先にモードUIと活動量セレクトを正しく構築
-    switchMode(initialMode, false);
-    
-    // 2. 各フィールドの値を復元
+    // 1. 各フィールドの値を復元
     fields.forEach(id => {
       if (saved[id] !== undefined && document.getElementById(id)) {
         document.getElementById(id).value = saved[id];
       }
     });
+
+    // 2. モードを適用
+    switchMode(initialMode, false);
 
     // 3. 活動量の値を再適用
     if (saved.activity_level) {
@@ -961,8 +961,8 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     // 4. 身長・体重があれば自動分析
-    const h = parseFloat(saved.height);
-    const w = parseFloat(saved.weight);
+    const h = parseFloat(document.getElementById('height').value);
+    const w = parseFloat(document.getElementById('weight').value);
     if (!isNaN(h) && !isNaN(w) && h > 0 && w > 0) {
       runAnalysis();
     }
@@ -992,7 +992,7 @@ function switchMode(mode, save = true) {
   const adultWeightGoal = document.getElementById('weight-goal-wrapper');
   const laurerGoal = document.getElementById('laurer-goal-wrapper');
 
-  // 活動量セレクトをモードに合わせて確実に更新
+  // 活動量セレクトをモードに合わせて更新
   renderActivityOptions(mode);
 
   if (mode === 'school') {
@@ -1034,7 +1034,7 @@ function autoSave() {
     if (el) data[id] = el.value;
   });
   try {
-    localStorage.setItem('kenshin_pal_data_v2', JSON.stringify(data));
+    localStorage.setItem('kenshin_pal_data_v3', JSON.stringify(data));
   } catch (e) {}
 }
 
@@ -1082,7 +1082,7 @@ function importData(event) {
 function clearData() {
   if (confirm('入力内容をリセットしますか？')) {
     const savedMode = currentMode;
-    try { localStorage.removeItem('kenshin_pal_data_v2'); } catch (e) {}
+    try { localStorage.removeItem('kenshin_pal_data_v3'); } catch (e) {}
     
     fields.forEach(id => {
       const el = document.getElementById(id);
@@ -1135,13 +1135,13 @@ function printReport() {
 function runAnalysis() {
   autoSave();
 
-  const gender = document.getElementById('gender').value || 'male';
-  const age = parseFloat(document.getElementById('age').value);
-  const act = parseFloat(document.getElementById('activity_level').value) || 1.5;
-  const h = parseFloat(document.getElementById('height').value);
-  const w = parseFloat(document.getElementById('weight').value);
-  const goalType = document.getElementById('weight_goal_type').value || 'standard';
-  const laurerGoalType = document.getElementById('laurer_goal_type').value || 'standard';
+  const gender = (document.getElementById('gender') && document.getElementById('gender').value) || 'male';
+  const age = parseFloat(document.getElementById('age') ? document.getElementById('age').value : NaN);
+  const act = parseFloat(document.getElementById('activity_level') ? document.getElementById('activity_level').value : 1.5) || 1.5;
+  const h = parseFloat(document.getElementById('height') ? document.getElementById('height').value : NaN);
+  const w = parseFloat(document.getElementById('weight') ? document.getElementById('weight').value : NaN);
+  const goalType = (document.getElementById('weight_goal_type') && document.getElementById('weight_goal_type').value) || 'standard';
+  const laurerGoalType = (document.getElementById('laurer_goal_type') && document.getElementById('laurer_goal_type').value) || 'standard';
 
   if (isNaN(h) || isNaN(w) || h <= 0 || w <= 0) {
     alert('「身長」と「体重」を正しく入力してから実行してください💡');
@@ -1297,8 +1297,8 @@ function runAnalysis() {
       tip: laurer >= 160 ? 'ジュースをお茶に変え、夜遅い間食を控えて元気に外遊びしましょう🏀' : '成長期はしっかり食べて元気に体を動かすことが一番の健康です✨'
     });
 
-    const vr = document.getElementById('vision_r').value || 'A';
-    const vl = document.getElementById('vision_l').value || 'A';
+    const vr = (document.getElementById('vision_r') && document.getElementById('vision_r').value) || 'A';
+    const vl = (document.getElementById('vision_l') && document.getElementById('vision_l').value) || 'A';
     rawLines.push(`・視力: 右 ${vr} / 左 ${vl}`);
     maskedLines.push(`・視力: 右 ${vr} / 左 ${vl}`);
     items.push({
@@ -1309,7 +1309,7 @@ function runAnalysis() {
       tip: (vr !== 'A' || vl !== 'A') ? '黒板が見えにくい場合は眼科での再検査や眼鏡調整を検討してください👓' : '良好です！'
     });
 
-    const up = document.getElementById('urine_protein').value || '-';
+    const up = (document.getElementById('urine_protein') && document.getElementById('urine_protein').value) || '-';
     let upBadge = 'gap-achieved';
     let upText = '陰性 (-) 正常 🎯';
     if (up === '+-') { upBadge = 'gap-warning'; upText = '偽陽性 (±) 要観察'; }
@@ -1329,7 +1329,7 @@ function runAnalysis() {
       prescriptions.push('💧 <strong>学校検尿で尿タンパク陽性:</strong> 激しい運動を控え、医療機関での再検査（早朝尿検査）を受けましょう。');
     }
 
-    const us = document.getElementById('urine_sugar').value || '-';
+    const us = (document.getElementById('urine_sugar') && document.getElementById('urine_sugar').value) || '-';
     rawLines.push(`・尿糖: ${us === '-' ? '陰性 (-)' : '陽性 (+)'}`);
     maskedLines.push(`・尿糖: ${us === '-' ? '陰性 正常 🎯' : '陽性 (+) 要受診'}`);
     items.push({
@@ -1515,8 +1515,8 @@ function runAnalysis() {
     }
 
     // 血圧（成人・自宅計測共通）
-    const sbp = parseFloat(document.getElementById('sbp').value);
-    const dbp = parseFloat(document.getElementById('dbp').value);
+    const sbp = parseFloat(document.getElementById('sbp') ? document.getElementById('sbp').value : NaN);
+    const dbp = parseFloat(document.getElementById('dbp') ? document.getElementById('dbp').value : NaN);
     if (!isNaN(sbp) || !isNaN(dbp)) {
       const maxDiff = Math.max(!isNaN(sbp) ? sbp - 120 : 0, !isNaN(dbp) ? dbp - 80 : 0);
       rawLines.push(`・血圧: ${sbp || '-'}/${dbp || '-'} mmHg (推奨 120/80未満)`);
@@ -1535,14 +1535,14 @@ function runAnalysis() {
 
     // 👔 成人・一般モードのみ血液検査項目を処理
     if (currentMode === 'adult') {
-      const ldl = parseFloat(document.getElementById('ldl').value);
-      const tg = parseFloat(document.getElementById('tg').value);
-      const bs = parseFloat(document.getElementById('bs').value);
-      const hba1c = parseFloat(document.getElementById('hba1c').value);
-      const alt = parseFloat(document.getElementById('alt').value);
-      const gtp = parseFloat(document.getElementById('gtp').value);
-      const cre = parseFloat(document.getElementById('creatinine').value);
-      const ua = parseFloat(document.getElementById('ua').value);
+      const ldl = parseFloat(document.getElementById('ldl') ? document.getElementById('ldl').value : NaN);
+      const tg = parseFloat(document.getElementById('tg') ? document.getElementById('tg').value : NaN);
+      const bs = parseFloat(document.getElementById('bs') ? document.getElementById('bs').value : NaN);
+      const hba1c = parseFloat(document.getElementById('hba1c') ? document.getElementById('hba1c').value : NaN);
+      const alt = parseFloat(document.getElementById('alt') ? document.getElementById('alt').value : NaN);
+      const gtp = parseFloat(document.getElementById('gtp') ? document.getElementById('gtp').value : NaN);
+      const cre = parseFloat(document.getElementById('creatinine') ? document.getElementById('creatinine').value : NaN);
+      const ua = parseFloat(document.getElementById('ua') ? document.getElementById('ua').value : NaN);
 
       if (!isNaN(cre) && !isNaN(age) && age > 0) {
         let egfr = 194 * Math.pow(cre, -1.094) * Math.pow(age, -0.287);
