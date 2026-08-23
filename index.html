@@ -419,16 +419,20 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 4px;
+      gap: 8px;
     }
     .item-name {
       font-weight: bold;
       font-size: 0.9rem;
+      word-break: break-word;
     }
     .gap-badge {
       font-size: 0.75rem;
       font-weight: bold;
       padding: 3px 8px;
       border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .gap-achieved { background: #dcfce7; color: #15803d; }
     .gap-warning { background: #fef3c7; color: #b45309; }
@@ -1160,13 +1164,16 @@ function runAnalysis() {
     if (h && w) {
       const lauter = (w / Math.pow(h, 3)) * 10000000;
       let targetLauterVal = 130;
+      let targetLauterShort = '標準 130';
       let targetLauterName = '標準発育 (ローレル指数 130)';
 
       if (laurerGoalType === 'slim') {
         targetLauterVal = 115;
+        targetLauterShort = 'スリム 115';
         targetLauterName = 'スッキリ体型 (ローレル指数 115)';
       } else if (laurerGoalType === 'upper') {
         targetLauterVal = 145;
+        targetLauterShort = '上限 145';
         targetLauterName = 'ふくよか許容上限 (ローレル指数 145)';
       }
 
@@ -1220,7 +1227,7 @@ function runAnalysis() {
       summaryLines.push(`・ローレル指数: ${lauter.toFixed(1)} (${判定}) ｜ 目標: ${targetLauterName}`);
 
       items.push({
-        name: `ローレル指数 ＆ 目標 (${targetLauterName})`,
+        name: `体型目標 (${targetLauterShort})`,
         compare: `実測: <strong>${lauter.toFixed(1)}</strong> (体重:${w}kg) ｜ 目標: <strong>${targetLauterVal}</strong> (目安:${targetLaurerW}kg)`,
         badge: badgeCls,
         badgeText: badgeTxt,
@@ -1274,6 +1281,7 @@ function runAnalysis() {
     calCard.style.display = 'block';
 
     let targetW = null;
+    let targetShort = '標準 BMI22';
     let targetName = '標準体重 (BMI 22)';
     if (h) {
       const standardW = (22 * Math.pow(h / 100, 2)).toFixed(1);
@@ -1281,8 +1289,16 @@ function runAnalysis() {
       const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
 
       targetW = parseFloat(standardW);
-      if (goalType === 'beauty' && currentMode === 'adult') { targetW = parseFloat(beautyW); targetName = '美容体重 (BMI 20)'; }
-      if (goalType === 'model' && currentMode === 'adult') { targetW = parseFloat(modelW); targetName = 'モデル体重 (BMI 18.5)'; }
+      if (goalType === 'beauty' && currentMode === 'adult') { 
+        targetW = parseFloat(beautyW); 
+        targetShort = '美容 BMI20';
+        targetName = '美容体重 (BMI 20)'; 
+      }
+      if (goalType === 'model' && currentMode === 'adult') { 
+        targetW = parseFloat(modelW); 
+        targetShort = 'モデル BMI18.5';
+        targetName = 'モデル体重 (BMI 18.5)'; 
+      }
     }
 
     let dailyDeficit = 350;
@@ -1407,7 +1423,7 @@ function runAnalysis() {
       summaryLines.push(`・体重進捗: 実測 ${w}kg (BMI ${bmi.toFixed(1)}) ｜ 目標 ${targetName} (${targetW}kg / 差分: ${diff > 0 ? '-' + diff + 'kg' : '達成'})`);
 
       items.push({
-        name: `体重 ＆ 体型進捗 (${targetName})`,
+        name: `体型目標 (${targetShort})`,
         compare: `実測: <strong>${w} kg</strong> (BMI: ${bmi.toFixed(1)}) ｜ 選択目標: <strong>${targetW} kg</strong>`,
         badge: diff <= 0 ? 'gap-achieved' : (diff > 4 ? 'gap-alert' : 'gap-warning'),
         badgeText: diff <= 0 ? '目標達成 🎯' : `あと -${diff} kg`,
