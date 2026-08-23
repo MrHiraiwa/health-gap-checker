@@ -113,7 +113,7 @@
     
     .mode-selector {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       margin-bottom: 16px;
       background: #e2e8f0;
       padding: 4px;
@@ -121,11 +121,11 @@
     }
     .mode-btn {
       flex: 1;
-      padding: 10px;
+      padding: 8px 4px;
       text-align: center;
       border-radius: 6px;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: bold;
       color: #475569;
       transition: all 0.2s;
@@ -411,7 +411,7 @@
       line-height: 1.5;
     }
 
-    /* 🖨️ A4最適化 印刷専用スタイル（収まる時は1ページ、溢れる時や改ページ時は見出し頭から2ページ目へ） */
+    /* 🖨️ A4最適化 印刷専用スタイル */
     @media print {
       @page {
         size: A4 portrait;
@@ -489,7 +489,6 @@
         line-height: 1.2 !important;
       }
       
-      /* 📌 収まり切らずに改ページが発生する場合のみ、必ずこの見出しの頭から2ページ目に送る */
       #analysis-section h3 {
         font-size: 0.88rem !important;
         margin-top: 6px !important;
@@ -497,15 +496,6 @@
         padding-top: 4px;
         page-break-before: auto;
         break-before: auto;
-        /* もし1ページ目に収まらない場合は、見出しの前で改ページを許可・促進 */
-        break-after: avoid;
-        page-break-after: avoid;
-      }
-
-      /* 見出しのすぐ直後にある項目リストの最初の要素は、見出しと一緒に次ページへ送る */
-      #analysis-section h3 + #analysis-items {
-        page-break-inside: avoid;
-        break-inside: avoid;
       }
 
       #analysis-items {
@@ -567,10 +557,11 @@
     </div>
   </div>
 
-  <!-- モード切替 -->
+  <!-- モード切替（成人一般 / 簡易モード / 未成年学校健診） -->
   <div class="mode-selector">
-    <div id="btn-mode-adult" class="mode-btn active" onclick="switchMode('adult')">👔 成人・一般健診モード</div>
-    <div id="btn-mode-school" class="mode-btn" onclick="switchMode('school')">🎒 未成年・学校健診モード</div>
+    <div id="btn-mode-adult" class="mode-btn active" onclick="switchMode('adult')">👔 成人・一般</div>
+    <div id="btn-mode-simple" class="mode-btn" onclick="switchMode('simple')">⚡ 簡易モード</div>
+    <div id="btn-mode-school" class="mode-btn" onclick="switchMode('school')">🎒 未成年・学校</div>
   </div>
 
   <form id="health-form">
@@ -589,7 +580,7 @@
           <label for="age">年齢 (歳)</label>
           <input type="number" id="age" placeholder="例: 48" oninput="handleAgeChange()">
         </div>
-        <div class="field" style="grid-column: 1 / -1;">
+        <div class="field" style="grid-column: 1 / -1;" id="activity-field-wrapper">
           <label for="activity_level">🏃‍♂️ 日常の活動量・運動量（カロリー計算に使用）</label>
           <select id="activity_level" onchange="autoSave()">
             <option value="1.2">低い (デスクワーク中心、ほぼ運動しない / 歩数〜5,000歩)</option>
@@ -601,8 +592,8 @@
       </div>
     </fieldset>
 
-    <!-- 身体測定 & 目指す体型 -->
-    <fieldset>
+    <!-- 身体測定 & 目指す体型（成人用） -->
+    <fieldset id="section-body-adult">
       <legend>⚖️ 1. 身体測定 & 目指す体型ターゲット</legend>
       <div class="grid">
         <div class="field">
@@ -613,7 +604,7 @@
           <label for="weight">体重 (kg)</label>
           <input type="number" id="weight" step="0.1" placeholder="例: 65.0" oninput="autoSave()">
         </div>
-        <div class="field" style="grid-column: 1 / -1;">
+        <div class="field" style="grid-column: 1 / -1;" id="weight-goal-wrapper">
           <label for="weight_goal_type">🎯 目指したい体型目標タイプ</label>
           <select id="weight_goal_type" onchange="autoSave()">
             <option value="standard">標準体重 (BMI 22: 最も病気になりにくい健康体型)</option>
@@ -626,7 +617,7 @@
 
     <!-- 未成年・学校健診専用項目 -->
     <fieldset id="section-school" style="display: none;">
-      <legend>🎒 2. 学校健診 項目</legend>
+      <legend>🎒 2. 学校健診・成長期 項目</legend>
       <div class="grid">
         <div class="field">
           <label for="vision_r">視力 (右)</label>
@@ -665,7 +656,7 @@
       </div>
     </fieldset>
 
-    <!-- 成人・一般健診専用項目 -->
+    <!-- 成人・一般健診専用項目（簡易モードでは非表示） -->
     <div id="section-adult">
       <fieldset>
         <legend>💓 2. 血圧測定</legend>
@@ -688,7 +679,7 @@
       </fieldset>
 
       <!-- 脂質 -->
-      <fieldset>
+      <fieldset class="full-blood-test">
         <legend>🧪 3. 脂質検査</legend>
         <div class="grid">
           <div class="field">
@@ -709,7 +700,7 @@
       </fieldset>
 
       <!-- 糖代謝 -->
-      <fieldset>
+      <fieldset class="full-blood-test">
         <legend>🍚 4. 糖代謝検査</legend>
         <div class="grid">
           <div class="field">
@@ -730,7 +721,7 @@
       </fieldset>
 
       <!-- 肝機能 -->
-      <fieldset>
+      <fieldset class="full-blood-test">
         <legend>🍺 5. 肝機能検査</legend>
         <div class="grid">
           <div class="field">
@@ -751,7 +742,7 @@
       </fieldset>
 
       <!-- 腎機能・痛風 -->
-      <fieldset>
+      <fieldset class="full-blood-test">
         <legend>💧 6. 腎機能・痛風（尿酸）</legend>
         <div class="grid">
           <div class="field">
@@ -774,7 +765,7 @@
 
     <div class="btn-group">
       <button type="button" class="btn-clear" onclick="clearData()">全クリア 🗑️</button>
-      <button type="button" class="btn-main" onclick="runAnalysis()">推奨カロリー＆期間目安を計算 🚀</button>
+      <button type="button" class="btn-main" onclick="runAnalysis()">分析を実行する 🚀</button>
     </div>
   </form>
 
@@ -790,7 +781,7 @@
       <button type="button" class="btn-print" onclick="printReport()">印刷 / PDF出力 📄</button>
     </div>
 
-    <div class="calorie-card" id="calorie-result-card"></div>
+    <div class="calorie-card" id="calorie-result-card" style="display:none;"></div>
     <div class="roadmap-card" id="roadmap-result-card" style="display: none;"></div>
     <div class="diet-target-card" id="diet-result-card"></div>
 
@@ -812,7 +803,7 @@
 </div>
 
 <script>
-let currentMode = 'adult';
+let currentMode = 'adult'; // 'adult', 'simple', 'school'
 const fields = [
   'gender', 'age', 'activity_level', 'height', 'weight', 'weight_goal_type',
   'vision_r', 'vision_l', 'urine_protein', 'urine_sugar',
@@ -821,7 +812,7 @@ const fields = [
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v1') || '{}');
+    const saved = JSON.parse(localStorage.getItem('kenshin_pal_data_v2') || '{}');
     fields.forEach(id => {
       if (saved[id] !== undefined) document.getElementById(id).value = saved[id];
     });
@@ -847,9 +838,34 @@ function handleAgeChange() {
 function switchMode(mode, save = true) {
   currentMode = mode;
   document.getElementById('btn-mode-adult').classList.toggle('active', mode === 'adult');
+  document.getElementById('btn-mode-simple').classList.toggle('active', mode === 'simple');
   document.getElementById('btn-mode-school').classList.toggle('active', mode === 'school');
-  document.getElementById('section-adult').style.display = mode === 'adult' ? 'block' : 'none';
-  document.getElementById('section-school').style.display = mode === 'school' ? 'block' : 'none';
+
+  const adultSection = document.getElementById('section-adult');
+  const schoolSection = document.getElementById('section-school');
+  const bloodTestFields = document.querySelectorAll('.full-blood-test');
+  const activityField = document.getElementById('activity-field-wrapper');
+  const weightGoal = document.getElementById('weight-goal-wrapper');
+
+  if (mode === 'school') {
+    adultSection.style.display = 'none';
+    schoolSection.style.display = 'block';
+  } else if (mode === 'simple') {
+    adultSection.style.display = 'block';
+    schoolSection.style.display = 'none';
+    // 簡易モードでは血液検査項目を隠し、血圧と体重測定だけにする
+    bloodTestFields.forEach(el => el.style.display = 'none');
+    activityField.style.display = 'none';
+    weightGoal.style.display = 'none';
+  } else {
+    // adult
+    adultSection.style.display = 'block';
+    schoolSection.style.display = 'none';
+    bloodTestFields.forEach(el => el.style.display = 'block');
+    activityField.style.display = 'flex';
+    weightGoal.style.display = 'flex';
+  }
+
   if (save) autoSave();
 }
 
@@ -857,7 +873,7 @@ function autoSave() {
   const data = { _mode: currentMode };
   fields.forEach(id => data[id] = document.getElementById(id).value);
   try {
-    localStorage.setItem('kenshin_pal_data_v1', JSON.stringify(data));
+    localStorage.setItem('kenshin_pal_data_v2', JSON.stringify(data));
     document.getElementById('save-status').innerText = '💾 自動保存中';
   } catch (e) {}
 }
@@ -897,7 +913,7 @@ function importData(event) {
 
 function clearData() {
   if (confirm('入力内容をリセットしますか？')) {
-    try { localStorage.removeItem('kenshin_pal_data_v1'); } catch (e) {}
+    try { localStorage.removeItem('kenshin_pal_data_v2'); } catch (e) {}
     fields.forEach(id => {
       if (id === 'gender') document.getElementById(id).value = 'male';
       else if (id === 'activity_level') document.getElementById(id).value = '1.5';
@@ -929,121 +945,47 @@ function runAnalysis() {
   const items = [];
   const prescriptions = [];
 
-  let targetW = null;
-  let targetName = '標準体重 (BMI 22)';
-  if (h) {
-    const standardW = (22 * Math.pow(h / 100, 2)).toFixed(1);
-    const beautyW = (20 * Math.pow(h / 100, 2)).toFixed(1);
-    const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
+  const calCard = document.getElementById('calorie-result-card');
+  const roadmapCard = document.getElementById('roadmap-result-card');
+  const dietCard = document.getElementById('diet-result-card');
 
-    targetW = parseFloat(standardW);
-    if (goalType === 'beauty') { targetW = parseFloat(beautyW); targetName = '美容体重 (BMI 20)'; }
-    if (goalType === 'model') { targetW = parseFloat(modelW); targetName = 'モデル体重 (BMI 18.5)'; }
-  }
+  // 未成年・学校健診モードの場合のロジック（ローレル指数・学校保健基準の肥満度判定）
+  if (currentMode === 'school') {
+    calCard.style.display = 'none';
+    roadmapCard.style.display = 'none';
 
-  // 0. 推奨摂取カロリー & 代謝計算
-  let dailyDeficit = 350;
-  if (h && w && age && targetW) {
-    let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
-    let currentTdee = Math.round(currentBmr * act);
+    if (h && w) {
+      // ローレル指数算出 = 体重(kg) / 身長(cm)^3 × 10^7
+      const lauter = (w / Math.pow(h, 3)) * 10000000;
+      let判定 = '標準 (発育良好)';
+      let badgeCls = 'gap-achieved';
+      let badgeTxt = '正常域 🎯';
 
-    let targetBmr = Math.round((10 * targetW) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
-    let targetTdee = Math.round(targetBmr * act);
+      // 学校保健における標準ローレル指数（大まかな目安：115〜145程度が標準）
+      if (lauter < 100) { 判定 = 'やせ気味 (栄養バランスに注意)'; badgeCls = 'gap-warning'; badgeTxt = 'やせ気味'; }
+      else if (lauter >= 160 && lauter < 190) { 判定 = '軽度太め (適度な運動・外遊びを推奨)'; badgeCls = 'gap-warning'; badgeTxt = 'やや太め'; }
+      else if (lauter >= 190) { 判定 = '肥満傾向 (生活習慣や食生活の見直しを推奨)'; badgeCls = 'gap-alert'; badgeTxt = '要生活改善'; }
 
-    let dietCal = Math.min(currentTdee - 350, targetTdee);
-    dietCal = Math.max(currentBmr, Math.round(dietCal));
-    dailyDeficit = Math.max(100, currentTdee - dietCal);
-
-    const calCard = document.getElementById('calorie-result-card');
-    calCard.innerHTML = `
-      <div class="calorie-title">🔥 エネルギー消費 & 推奨摂取カロリー（${targetName} 連動）</div>
-      <div style="font-size: 0.88rem; color: #713f12;">
-        活動量（レベル${act}）と目指す<strong>【${targetName}】</strong>に到達・維持するためのカロリー設計です。
-      </div>
-      <div class="calorie-grid">
-        <div class="calorie-box">
-          <div class="calorie-box-val">${dietCal} <span style="font-size:0.8rem;">kcal</span></div>
-          <div class="calorie-box-lbl">🎯 減量推奨カロリー<br>(${targetName}への移行期)</div>
+      dietCard.innerHTML = `
+        <div class="diet-target-title">🎒 学校健診・成長期 発育チェック</div>
+        <div style="font-size: 0.9rem; color: #831843; margin-bottom: 8px;">
+          身長 <strong>${h}cm</strong>・体重 <strong>${w}kg</strong> のローレル指数は <strong>${lauter.toFixed(1)}</strong> です。<br>
+          判定: <strong style="color: #be185d;">【${判定}】</strong>
         </div>
-        <div class="calorie-box">
-          <div class="calorie-box-val">${targetTdee} <span style="font-size:0.8rem;">kcal</span></div>
-          <div class="calorie-box-lbl">✨ ${targetName}維持カロリー<br>(目標達成後のキープ目安)</div>
-        </div>
-        <div class="calorie-box">
-          <div class="calorie-box-val">${currentBmr} <span style="font-size:0.8rem;">kcal</span></div>
-          <div class="calorie-box-lbl">⚠️ 現在の基礎代謝 (下限)<br>(これ以下は筋肉減少・代謝低下)</div>
-        </div>
-      </div>
-      <div style="font-size: 0.78rem; color: #854d0e; margin-top: 8px;">
-        💡 1日あたり <strong>約 -${dailyDeficit} kcal</strong> のアンダーカロリーで、体に負担をかけずに脂肪を燃焼します。
-      </div>
-    `;
-  }
-
-  // 1. 体重 & ダイエット進捗 & 期間ロードマップ
-  if (h && w && targetW) {
-    const bmi = w / Math.pow(h / 100, 2);
-    const standardW = (22 * Math.pow(h / 100, 2)).toFixed(1);
-    const beautyW = (20 * Math.pow(h / 100, 2)).toFixed(1);
-    const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
-
-    const diff = parseFloat((w - targetW).toFixed(1));
-    const dietCard = document.getElementById('diet-result-card');
-    const roadmapCard = document.getElementById('roadmap-result-card');
-    
-    let dietText = '';
-    if (diff > 0) {
-      dietText = `現在の体重 <strong>${w}kg</strong> は、目標の<strong>【${targetName}：${targetW}kg】</strong>まで <span style="color:#be185d; font-size:1.1rem; font-weight:bold;">あと -${diff} kg</span> の減量が必要です。`;
-
-      const totalCaloriesNeeded = diff * 7200;
-      const daysNeeded = Math.round(totalCaloriesNeeded / dailyDeficit);
-      const monthsNeeded = (daysNeeded / 30.4).toFixed(1);
-
-      const targetDate = new Date();
-      targetDate.setDate(targetDate.getDate() + daysNeeded);
-      const targetYear = targetDate.getFullYear();
-      const targetMonth = targetDate.getMonth() + 1;
-
-      roadmapCard.innerHTML = `
-        <div class="roadmap-title">📅 目標達成までのロードマップ（期間目安）</div>
-        <div style="font-size: 0.9rem; color: #14532d; line-height: 1.6;">
-          推奨ペース（1日 -${dailyDeficit}kcal）を継続した場合、<br>
-          あと <span class="roadmap-highlight">約 ${monthsNeeded} ヶ月（約 ${daysNeeded} 日）</span>、
-          <span class="roadmap-highlight">【 ${targetYear}年 ${targetMonth}月頃 】</span>の達成が目安となります✨
-        </div>
-        <div style="font-size: 0.78rem; color: #166534; margin-top: 6px; background: #ffffff; padding: 6px 10px; border-radius: 6px; border: 1px solid #bbf7d0;">
-          💡 <strong>安全なペース:</strong> 月1〜1.5kg減は、筋肉量や基礎代謝を維持し、リバウンドや尿酸値急上昇を防ぐ理想的な減量速度です。
+        <div style="font-size: 0.8rem; color: #9d174d; background: #fff; padding: 6px 10px; border-radius: 6px;">
+          💡 <strong>成長期のお子様へ:</strong> 過度な食事制限や減量は絶対に避け、バランスの良い食事と十分な睡眠・運動を心がけましょう！
         </div>
       `;
-      roadmapCard.style.display = 'block';
 
-    } else if (diff < 0) {
-      dietText = `現在の体重 <strong>${w}kg</strong> は、目標の【${targetName}：${targetW}kg】を下回っています（-${Math.abs(diff)}kg）。現状維持を推奨します。`;
-      roadmapCard.style.display = 'none';
-    } else {
-      dietText = `現在の体重 <strong>${w}kg</strong> は、目標の【${targetName}】ぴったりです！🎉`;
-      roadmapCard.style.display = 'none';
+      items.push({
+        name: 'ローレル指数 (成長期発育評価)',
+        compare: `実測値: <strong>${lauter.toFixed(1)}</strong> ｜ 標準目安: <strong>115 〜 145</strong>`,
+        badge: badgeCls,
+        badgeText: badgeTxt,
+        tip: '成長期はしっかり食べて元気に体を動かすことが一番の健康です🏀'
+      });
     }
 
-    dietCard.innerHTML = `
-      <div class="diet-target-title">👗 体型・ダイエット進捗サマリー</div>
-      <div style="font-size: 0.9rem; color: #831843; margin-bottom: 8px;">${dietText}</div>
-      <div style="font-size: 0.8rem; color: #9d174d; background: #fff; padding: 6px 10px; border-radius: 6px;">
-        💡 参考体型別基準: 標準(BMI22)=<strong>${standardW}kg</strong> ｜ 美容(BMI20)=<strong>${beautyW}kg</strong> ｜ モデル(BMI18.5)=<strong>${modelW}kg</strong>
-      </div>
-    `;
-
-    items.push({
-      name: `体重 ＆ 体型進捗 (${targetName})`,
-      compare: `実測: <strong>${w} kg</strong> (BMI: ${bmi.toFixed(1)}) ｜ 選択目標: <strong>${targetW} kg</strong>`,
-      badge: diff <= 0 ? 'gap-achieved' : (diff > 4 ? 'gap-alert' : 'gap-warning'),
-      badgeText: diff <= 0 ? '目標達成 🎯' : `あと -${diff} kg`,
-      tip: '算出した推奨摂取カロリーと適度なウォーキングをベースに進めましょう🏃‍♂️'
-    });
-  }
-
-  // 学校健診モード
-  if (currentMode === 'school') {
     const vr = document.getElementById('vision_r').value;
     const vl = document.getElementById('vision_l').value;
     const up = document.getElementById('urine_protein').value;
@@ -1059,45 +1001,141 @@ function runAnalysis() {
     if (up !== '-') {
       prescriptions.push('💧 <strong>学校検尿で尿タンパク陽性:</strong> 激しい運動を控え、再検査（早朝尿検査）を受けましょう。');
     }
-  }
 
-  // 成人モード
-  if (currentMode === 'adult') {
-    const sbp = parseFloat(document.getElementById('sbp').value);
-    const dbp = parseFloat(document.getElementById('dbp').value);
-    const ldl = parseFloat(document.getElementById('ldl').value);
-    const tg = parseFloat(document.getElementById('tg').value);
-    const bs = parseFloat(document.getElementById('bs').value);
-    const hba1c = parseFloat(document.getElementById('hba1c').value);
-    const alt = parseFloat(document.getElementById('alt').value);
-    const gtp = parseFloat(document.getElementById('gtp').value);
-    const cre = parseFloat(document.getElementById('creatinine').value);
-    const ua = parseFloat(document.getElementById('ua').value);
+  } else {
+    // 成人モード ＆ 簡易モード
+    calCard.style.display = 'block';
 
-    // 1. 腎機能 (eGFR)
-    let egfr = null;
-    if (cre && age) {
-      egfr = 194 * Math.pow(cre, -1.094) * Math.pow(age, -0.287);
-      if (gender === 'female') egfr *= 0.739;
-      egfr = parseFloat(egfr.toFixed(1));
+    let targetW = null;
+    let targetName = '標準体重 (BMI 22)';
+    if (h) {
+      const standardW = (22 * Math.pow(h / 100, 2)).toFixed(1);
+      const beautyW = (20 * Math.pow(h / 100, 2)).toFixed(1);
+      const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
 
-      if (egfr < 60 || cre > (gender === 'male' ? 1.0 : 0.7)) {
-        prescriptions.push('💧 <strong>腎機能ケア中のダイエット注意点:</strong><br>プロテインの過剰摂取は腎臓に負荷をかけます。タンパク質は適正量（体重×0.8〜1.0g）に留め、<strong>「減塩（1日6g未満）」と「水分補給（目標2〜3L）」</strong>を軸にカロリー調整を行ってください。');
+      targetW = parseFloat(standardW);
+      if (goalType === 'beauty') { targetW = parseFloat(beautyW); targetName = '美容体重 (BMI 20)'; }
+      if (goalType === 'model') { targetW = parseFloat(modelW); targetName = 'モデル体重 (BMI 18.5)'; }
+    }
+
+    let dailyDeficit = 350;
+    if (h && w && age && targetW && currentMode === 'adult') {
+      let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
+      let currentTdee = Math.round(currentBmr * act);
+
+      let targetBmr = Math.round((10 * targetW) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
+      let targetTdee = Math.round(targetBmr * act);
+
+      let dietCal = Math.min(currentTdee - 350, targetTdee);
+      dietCal = Math.max(currentBmr, Math.round(dietCal));
+      dailyDeficit = Math.max(100, currentTdee - dietCal);
+
+      calCard.innerHTML = `
+        <div class="calorie-title">🔥 エネルギー消費 & 推奨摂取カロリー（${targetName} 連動）</div>
+        <div style="font-size: 0.88rem; color: #713f12;">
+          活動量（レベル${act}）と目指す<strong>【${targetName}】</strong>に到達・維持するためのカロリー設計です。
+        </div>
+        <div class="calorie-grid">
+          <div class="calorie-box">
+            <div class="calorie-box-val">${dietCal} <span style="font-size:0.8rem;">kcal</span></div>
+            <div class="calorie-box-lbl">🎯 減量推奨カロリー<br>(${targetName}への移行期)</div>
+          </div>
+          <div class="calorie-box">
+            <div class="calorie-box-val">${targetTdee} <span style="font-size:0.8rem;">kcal</span></div>
+            <div class="calorie-box-lbl">✨ ${targetName}維持カロリー<br>(目標達成後のキープ目安)</div>
+          </div>
+          <div class="calorie-box">
+            <div class="calorie-box-val">${currentBmr} <span style="font-size:0.8rem;">kcal</span></div>
+            <div class="calorie-box-lbl">⚠️ 現在の基礎代謝 (下限)<br>(これ以下は筋肉減少・代謝低下)</div>
+          </div>
+        </div>
+        <div style="font-size: 0.78rem; color: #854d0e; margin-top: 8px;">
+          💡 1日あたり <strong>約 -${dailyDeficit} kcal</strong> のアンダーカロリーで、体に負担をかけずに脂肪を燃焼します。
+        </div>
+      `;
+    } else if (h && w && age && currentMode === 'simple') {
+      let currentBmr = Math.round((10 * w) + (6.25 * h) - (5 * age) + (gender === 'male' ? 5 : -161));
+      let currentTdee = Math.round(currentBmr * 1.5);
+      let dietCal = Math.max(currentBmr, currentTdee - 350);
+
+      calCard.innerHTML = `
+        <div class="calorie-title">🔥 簡易モード 推奨カロリー設計</div>
+        <div class="calorie-grid">
+          <div class="calorie-box">
+            <div class="calorie-box-val">${dietCal} <span style="font-size:0.8rem;">kcal</span></div>
+            <div class="calorie-box-lbl">🎯 減量推奨カロリー<br>(標準ペース)</div>
+          </div>
+          <div class="calorie-box">
+            <div class="calorie-box-val">${currentTdee} <span style="font-size:0.8rem;">kcal</span></div>
+            <div class="calorie-box-lbl">⚖️ 維持カロリー<br>(活動量:普通)</div>
+          </div>
+          <div class="calorie-box">
+            <div class="calorie-box-val">${currentBmr} <span style="font-size:0.8rem;">kcal</span></div>
+            <div class="calorie-box-lbl">⚠️ 基礎代謝 (下限)</div>
+          </div>
+        </div>
+      `;
+    }
+
+    if (h && w && targetW && currentMode === 'adult') {
+      const bmi = w / Math.pow(h / 100, 2);
+      const standardW = (22 * Math.pow(h / 100, 2)).toFixed(1);
+      const beautyW = (20 * Math.pow(h / 100, 2)).toFixed(1);
+      const modelW = (18.5 * Math.pow(h / 100, 2)).toFixed(1);
+
+      const diff = parseFloat((w - targetW).toFixed(1));
+      
+      let dietText = '';
+      if (diff > 0) {
+        dietText = `現在の体重 <strong>${w}kg</strong> は、目標の<strong>【${targetName}：${targetW}kg】</strong>まで <span style="color:#be185d; font-size:1.1rem; font-weight:bold;">あと -${diff} kg</span> の減量が必要です。`;
+
+        const totalCaloriesNeeded = diff * 7200;
+        const daysNeeded = Math.round(totalCaloriesNeeded / dailyDeficit);
+        const monthsNeeded = (daysNeeded / 30.4).toFixed(1);
+
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + daysNeeded);
+        const targetYear = targetDate.getFullYear();
+        const targetMonth = targetDate.getMonth() + 1;
+
+        roadmapCard.innerHTML = `
+          <div class="roadmap-title">📅 目標達成までのロードマップ（期間目安）</div>
+          <div style="font-size: 0.9rem; color: #14532d; line-height: 1.6;">
+            推奨ペース（1日 -${dailyDeficit}kcal）を継続した場合、<br>
+            あと <span class="roadmap-highlight">約 ${monthsNeeded} ヶ月（約 ${daysNeeded} 日）</span>、
+            <span class="roadmap-highlight">【 ${targetYear}年 ${targetMonth}月頃 】</span>の達成が目安となります✨
+          </div>
+        `;
+        roadmapCard.style.display = 'block';
+      } else {
+        roadmapCard.style.display = 'none';
+        dietText = `現在の体重 <strong>${w}kg</strong> は、目標の【${targetName}】を達成または下回っています！🎉`;
       }
 
+      dietCard.innerHTML = `
+        <div class="diet-target-title">👗 体型・ダイエット進捗サマリー</div>
+        <div style="font-size: 0.9rem; color: #831843; margin-bottom: 8px;">${dietText}</div>
+      `;
+
       items.push({
-        name: '腎機能 (eGFR / 推算糸球体濾過量)',
-        compare: `実測: <strong>${egfr} mL/分/1.73㎡</strong> (CRE: ${cre}) ｜ 推奨: <strong>60.0 以上</strong>`,
-        badge: egfr >= 60 ? 'gap-achieved' : (egfr >= 50 ? 'gap-warning' : 'gap-alert'),
-        badgeText: egfr >= 60 ? '正常域 🎯' : `低下 (目標60まで +${(60 - egfr).toFixed(1)})`,
-        tip: '腎臓保護には減塩・十分な水分補給・血圧管理が最優先です。'
+        name: `体重 ＆ 体型進捗 (${targetName})`,
+        compare: `実測: <strong>${w} kg</strong> (BMI: ${bmi.toFixed(1)}) ｜ 選択目標: <strong>${targetW} kg</strong>`,
+        badge: diff <= 0 ? 'gap-achieved' : (diff > 4 ? 'gap-alert' : 'gap-warning'),
+        badgeText: diff <= 0 ? '目標達成 🎯' : `あと -${diff} kg`,
+        tip: '算出した推奨摂取カロリーと適度なウォーキングをベースに進めましょう🏃‍♂️'
       });
+    } else if (h && w && currentMode === 'simple') {
+      const bmi = w / Math.pow(h / 100, 2);
+      dietCard.innerHTML = `
+        <div class="diet-target-title">👗 簡易体型サマリー</div>
+        <div style="font-size: 0.9rem; color: #831843;">現在のBMI: <strong>${bmi.toFixed(1)}</strong> (身長:${h}cm / 体重:${w}kg)</div>
+      `;
+      roadmapCard.style.display = 'none';
     }
 
-    // 2. 高血圧
-    if (sbp >= 130 || dbp >= 85) {
-      prescriptions.push('💓 <strong>血圧高めのダイエット注意点:</strong><br>息を止めて力む筋トレは避け、ウォーキング等の有酸素運動を中心に行いましょう。食事は減塩を徹底し、カリウム（野菜類）を意識してください。');
-    }
+    // 血圧などのチェック（成人・簡易共通）
+    const sbp = parseFloat(document.getElementById('sbp').value);
+    const dbp = parseFloat(document.getElementById('dbp').value);
     if (sbp || dbp) {
       const maxDiff = Math.max(sbp ? sbp - 120 : 0, dbp ? dbp - 80 : 0);
       items.push({
@@ -1109,77 +1147,100 @@ function runAnalysis() {
       });
     }
 
-    // 3. 肝機能
-    const gtpTarget = gender === 'male' ? 50 : 30;
-    if ((alt && alt > 30) || (gtp && gtp > gtpTarget)) {
-      prescriptions.push('🍺 <strong>肝機能高め（脂肪肝傾向）のダイエット注意点:</strong><br>極端な絶食は避け、夜遅い炭水化物・アルコールをカットして有酸素運動で内臓脂肪を燃焼させましょう。');
-    }
-    if (alt || gtp) {
-      const isWarn = (alt && alt > 30) || (gtp && gtp > gtpTarget);
-      items.push({
-        name: '肝機能 (ALT / γ-GTP)',
-        compare: `実測: <strong>ALT:${alt || '-'} / γ-GTP:${gtp || '-'} U/L</strong> ｜ 推奨: <strong>ALT 30以下 / γ-GTP ${gtpTarget}以下</strong>`,
-        badge: !isWarn ? 'gap-achieved' : 'gap-warning',
-        badgeText: !isWarn ? '正常域 🎯' : '目標超過',
-        tip: '夜間の糖質控えめとアルコール調整が効果的です。'
-      });
-    }
+    // 通常モードのみ血液検査
+    if (currentMode === 'adult') {
+      const ldl = parseFloat(document.getElementById('ldl').value);
+      const tg = parseFloat(document.getElementById('tg').value);
+      const bs = parseFloat(document.getElementById('bs').value);
+      const hba1c = parseFloat(document.getElementById('hba1c').value);
+      const alt = parseFloat(document.getElementById('alt').value);
+      const gtp = parseFloat(document.getElementById('gtp').value);
+      const cre = parseFloat(document.getElementById('creatinine').value);
+      const ua = parseFloat(document.getElementById('ua').value);
 
-    // 4. 尿酸値
-    if (ua && ua > 6.0) {
-      prescriptions.push('🦶 <strong>尿酸値高めのダイエット注意点:</strong><br>急激な体重減少やハードな無酸素運動は尿酸値を急上昇させます。水分を1日2L以上補給し、月1kg程度の緩やかな減量を行ってください。');
-    }
-    if (ua) {
-      const diff = (ua - 6.0).toFixed(1);
-      items.push({
-        name: '尿酸値 (UA)',
-        compare: `実測: <strong>${ua} mg/dL</strong> ｜ 推奨: <strong>6.0 以下</strong>`,
-        badge: ua <= 6.0 ? 'gap-achieved' : (ua > 7.0 ? 'gap-alert' : 'gap-warning'),
-        badgeText: ua <= 6.0 ? '理想域 🎯' : `あと -${diff} mg/dL`,
-        tip: '水分補給を徹底し、プリン体・果糖を控えましょう🥤'
-      });
-    }
+      if (cre && age) {
+        let egfr = 194 * Math.pow(cre, -1.094) * Math.pow(age, -0.287);
+        if (gender === 'female') egfr *= 0.739;
+        egfr = parseFloat(egfr.toFixed(1));
 
-    // 5. 脂質 (LDL & 中性脂肪)
-    if (ldl) {
-      const diff = ldl - 119;
-      items.push({
-        name: 'LDLコレステロール (悪玉)',
-        compare: `実測: <strong>${ldl} mg/dL</strong> ｜ 推奨: <strong>119 以下</strong>`,
-        badge: diff <= 0 ? 'gap-achieved' : 'gap-warning',
-        badgeText: diff <= 0 ? '基準内 🎯' : `あと -${diff} mg/dL`,
-        tip: '食物繊維や青魚を積極的に摂りましょう🐟'
-      });
-    }
-    if (tg) {
-      const diff = tg - 149;
-      items.push({
-        name: '中性脂肪 (TG)',
-        compare: `実測: <strong>${tg} mg/dL</strong> ｜ 推奨: <strong>149 以下</strong>`,
-        badge: diff <= 0 ? 'gap-achieved' : 'gap-warning',
-        badgeText: diff <= 0 ? '基準内 🎯' : `あと -${diff} mg/dL`,
-        tip: '夜遅い主食やお酒を控えめにすることで改善しやすい指標です。'
-      });
-    }
+        if (egfr < 60 || cre > (gender === 'male' ? 1.0 : 0.7)) {
+          prescriptions.push('💧 <strong>腎機能ケア中のダイエット注意点:</strong><br>プロテインの過剰摂取は控え、<strong>減塩（6g未満）と水分補給（2〜3L）</strong>を軸にしてください。');
+        }
 
-    // 6. 糖代謝 (血糖 & HbA1c)
-    if (bs || hba1c) {
-      let isHigh = (hba1c && hba1c > 5.5) || (bs && bs > 99);
-      let desc = [];
-      if (bs) desc.push(`血糖値: ${bs}mg/dL (目標99以下)`);
-      if (hba1c) desc.push(`HbA1c: ${hba1c}% (目標5.5%以下)`);
+        items.push({
+          name: '腎機能 (eGFR)',
+          compare: `実測: <strong>${egfr} mL/分/1.73㎡</strong> (CRE: ${cre}) ｜ 推奨: <strong>60.0 以上</strong>`,
+          badge: egfr >= 60 ? 'gap-achieved' : (egfr >= 50 ? 'gap-warning' : 'gap-alert'),
+          badgeText: egfr >= 60 ? '正常域 🎯' : `低下 (目標60まで +${(60 - egfr).toFixed(1)})`,
+          tip: '腎臓保護には減塩・十分な水分補給が最優先です。'
+        });
+      }
 
-      items.push({
-        name: '糖代謝 (血糖 / HbA1c)',
-        compare: `実測: <strong>${desc.join(' ｜ ')}</strong>`,
-        badge: !isHigh ? 'gap-achieved' : 'gap-warning',
-        badgeText: !isHigh ? '正常域 🎯' : '高め',
-        tip: '食後の散歩や野菜ファーストが効果的です🚶'
-      });
+      const gtpTarget = gender === 'male' ? 50 : 30;
+      if ((alt && alt > 30) || (gtp && gtp > gtpTarget)) {
+        prescriptions.push('🍺 <strong>肝機能高め（脂肪肝傾向）:</strong> 夜遅い炭水化物・アルコールを控えましょう。');
+      }
+      if (alt || gtp) {
+        const isWarn = (alt && alt > 30) || (gtp && gtp > gtpTarget);
+        items.push({
+          name: '肝機能 (ALT / γ-GTP)',
+          compare: `実測: <strong>ALT:${alt || '-'} / γ-GTP:${gtp || '-'}</strong> ｜ 推奨: <strong>ALT30以下 / γ-GTP${gtpTarget}以下</strong>`,
+          badge: !isWarn ? 'gap-achieved' : 'gap-warning',
+          badgeText: !isWarn ? '正常域 🎯' : '目標超過',
+          tip: '夜間の糖質控えめとアルコール調整が効果的です。'
+        });
+      }
+
+      if (ua && ua > 6.0) {
+        prescriptions.push('🦶 <strong>尿酸値高め:</strong> 急激な減量を避け、水分をしっかり摂りましょう。');
+      }
+      if (ua) {
+        const diff = (ua - 6.0).toFixed(1);
+        items.push({
+          name: '尿酸値 (UA)',
+          compare: `実測: <strong>${ua} mg/dL</strong> ｜ 推奨: <strong>6.0 以下</strong>`,
+          badge: ua <= 6.0 ? 'gap-achieved' : (ua > 7.0 ? 'gap-alert' : 'gap-warning'),
+          badgeText: ua <= 6.0 ? '理想域 🎯' : `あと -${diff} mg/dL`,
+          tip: '水分補給を徹底し、プリン体・果糖を控えましょう🥤'
+        });
+      }
+
+      if (ldl) {
+        const diff = ldl - 119;
+        items.push({
+          name: 'LDLコレステロール',
+          compare: `実測: <strong>${ldl} mg/dL</strong> ｜ 推奨: <strong>119 以下</strong>`,
+          badge: diff <= 0 ? 'gap-achieved' : 'gap-warning',
+          badgeText: diff <= 0 ? '基準内 🎯' : `あと -${diff} mg/dL`,
+          tip: '食物繊維や青魚を積極的に摂りましょう🐟'
+        });
+      }
+      if (tg) {
+        const diff = tg - 149;
+        items.push({
+          name: '中性脂肪 (TG)',
+          compare: `実測: <strong>${tg} mg/dL</strong> ｜ 推奨: <strong>149 以下</strong>`,
+          badge: diff <= 0 ? 'gap-achieved' : 'gap-warning',
+          badgeText: diff <= 0 ? '基準内 🎯' : `あと -${diff} mg/dL`,
+          tip: '夜遅い主食やお酒を控えめにしましょう。'
+        });
+      }
+      if (bs || hba1c) {
+        let isHigh = (hba1c && hba1c > 5.5) || (bs && bs > 99);
+        let desc = [];
+        if (bs) desc.push(`血糖値:${bs}`);
+        if (hba1c) desc.push(`HbA1c:${hba1c}%`);
+        items.push({
+          name: '糖代謝',
+          compare: `実測: <strong>${desc.join(' ｜ ')}</strong>`,
+          badge: !isHigh ? 'gap-achieved' : 'gap-warning',
+          badgeText: !isHigh ? '正常域 🎯' : '高め',
+          tip: '食後の散歩や野菜ファーストが効果的です🚶'
+        });
+      }
     }
   }
 
-  // 処方箋表示
   const presCard = document.getElementById('special-prescription-card');
   const presList = document.getElementById('special-prescription-list');
   if (prescriptions.length > 0) {
@@ -1189,7 +1250,6 @@ function runAnalysis() {
     presCard.style.display = 'none';
   }
 
-  // 項目別カード表示
   const list = document.getElementById('analysis-items');
   list.innerHTML = '';
   items.forEach(item => {
