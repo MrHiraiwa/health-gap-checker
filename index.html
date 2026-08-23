@@ -411,7 +411,7 @@
       line-height: 1.5;
     }
 
-    /* 🖨️ A4最適化 印刷スタイル（自動改ページ対応） */
+    /* 🖨️ A4最適化 印刷専用スタイル（スマホの画面表示には影響しません） */
     @media print {
       @page {
         size: A4 portrait;
@@ -494,7 +494,6 @@
         margin-top: 6px !important;
         margin-bottom: 6px !important;
         padding-top: 4px;
-        /* 強制的な改ページを外し、収まらなくなった場合だけ自然に改ページ */
         page-break-before: auto !important;
         break-before: auto !important;
       }
@@ -1073,7 +1072,7 @@ function runAnalysis() {
       egfr = parseFloat(egfr.toFixed(1));
 
       if (egfr < 60 || cre > (gender === 'male' ? 1.0 : 0.7)) {
-        prescriptions.push('💧 <strong>腎機能ケア中のダイエット注意点:</strong><br>プロテインの過剰摂取は腎臓に負荷をかけます。タンパク質は適正量（体重×0.8〜1.0g）に留め、<strong>「減塩（1日6g未満）」と<span>「水分補給（目標2〜3L）」</span></strong>を軸にカロリー調整を行ってください。');
+        prescriptions.push('💧 <strong>腎機能ケア中のダイエット注意点:</strong><br>プロテインの過剰摂取は腎臓に負荷をかけます。タンパク質は適正量（体重×0.8〜1.0g）に留め、<strong>「減塩（1日6g未満）」と「水分補給（目標2〜3L）」</strong>を軸にカロリー調整を行ってください。');
       }
 
       items.push({
