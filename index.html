@@ -309,7 +309,7 @@
     .range-bar-header {
       display: flex;
       justify-content: space-between;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       color: #713f12;
       font-weight: bold;
       margin-bottom: 6px;
@@ -818,7 +818,7 @@
 
 <script>
 let currentMode = 'adult'; 
-const STORAGE_KEY = 'kenshin_pal_storage_v24';
+const STORAGE_KEY = 'kenshin_pal_storage_v28';
 let weightChartInstance = null;
 
 const fields = [
@@ -839,7 +839,7 @@ function formatDate(date) {
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    let raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('kenshin_pal_storage_v23');
+    let raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('kenshin_pal_storage_v27');
     const saved = JSON.parse(raw || '{}');
     
     fields.forEach(id => {
@@ -1057,12 +1057,11 @@ function runAnalysis() {
     const compareTargetWrapper = document.getElementById('compare-target-wrapper');
     const chartCard = document.getElementById('chart-card');
 
-    // 水分補給目標の計算ロジック（最小値＜最大値の安全性確保）
+    // 水分補給目標の計算ロジック
     const totalWater = Math.round(w * 35);
     const calculatedDrinkMin = Math.round(w * 22);
     const calculatedDrinkMax = Math.round(w * 30);
     
-    // 最小値と最大値の安全な切り出し
     const drinkWaterMin = Math.max(800, Math.min(calculatedDrinkMin, calculatedDrinkMax));
     const drinkWaterMax = Math.min(3000, Math.max(calculatedDrinkMin, calculatedDrinkMax));
 
@@ -1087,17 +1086,20 @@ function runAnalysis() {
       targets.forEach(t => {
         t.targetW = parseFloat((t.bmi * Math.pow(h / 100, 2)).toFixed(1));
         t.diff = parseFloat((w - t.targetW).toFixed(1));
-        t.targetBmr = Math.round((10 * t.targetW) + (6.25 * h) - (5 * calcAge) + (gender === 'male' ? 5 : -161));
-
-        const targetTdeeNormal = Math.round(t.targetBmr * 1.5);
-        t.dietCalNormal = Math.max(currentBmr, Math.min(normalTdee - 350, targetTdeeNormal));
         
-        const dietMin = Math.max(currentBmr, Math.min(minTdee - 350, Math.round(t.targetBmr * 1.2)));
-        const dietMax = Math.max(currentBmr, Math.min(maxTdee - 350, Math.round(t.targetBmr * 1.75)));
+        // 目標体重時点での基礎代謝および運動量別の維持・減量カロリーを個別に正確に算出
+        t.targetBmr = Math.round((10 * t.targetW) + (6.25 * h) - (5 * calcAge) + (gender === 'male' ? 5 : -161));
+        const targetTdeeMin = Math.round(t.targetBmr * 1.2);
+        const targetTdeeMax = Math.round(t.targetBmr * 1.75);
+        
+        // 各目標体重を維持・達成するための適切なカロリー幅（基礎代謝割れを防ぐガード付き）
+        const dietMin = Math.max(t.targetBmr, Math.round(targetTdeeMin));
+        const dietMax = Math.max(t.targetBmr, Math.round(targetTdeeMax));
         t.dietCalRange = `${dietMin}〜${dietMax}`;
 
         if (t.diff > 0) {
-          t.days = Math.round((t.diff * 7200) / (normalTdee - t.dietCalNormal || 100));
+          const normalTargetTdee = Math.round(t.targetBmr * 1.5);
+          t.days = Math.round((t.diff * 7200) / (normalTdee - (normalTargetTdee - 300) || 150));
           t.months = (t.days / 30.4).toFixed(1);
 
           const targetD = new Date(now.getTime());
@@ -1111,18 +1113,18 @@ function runAnalysis() {
       const stdTarget = targets[0];
       const pGrams = Math.round(w * 1.0);
       const pCal = pGrams * 4;
-      const fCal = Math.round(stdTarget.dietCalNormal * 0.225);
+      const fCal = Math.round(currentBmr * 0.25);
       const fGrams = Math.round(fCal / 9);
-      const cCal = Math.max(0, stdTarget.dietCalNormal - pCal - fCal);
+      const cCal = Math.max(0, currentBmr - pCal - fCal);
       const cGrams = Math.round(cCal / 4);
 
-      // 1. カロリー表示
+      // 1. カロリー表示（1日の歩数・生活強度の目安注記を追加）
       calCard.innerHTML = `
         <div class="calorie-title">🔥 1日のカロリー設計（生活活動量 1.2 〜 1.75 レンジ）</div>
         <div class="range-bar-container">
           <div class="range-bar-header">
-            <span>🛋️ デスクワークメインの日</span>
-            <span>🏃‍♂️ 外出・運動が多い日</span>
+            <span>🛋️ デスクワーク中心の日 (〜5,000歩)</span>
+            <span>🏃‍♂️ 外出・運動が多い日 (10,000歩以上)</span>
           </div>
           <div class="range-bar-track">
             <div class="range-bar-fill" style="width: 100%;"></div>
@@ -1130,6 +1132,9 @@ function runAnalysis() {
           <div class="range-values">
             <span>維持: ${minTdee} kcal</span>
             <span>維持: ${maxTdee} kcal</span>
+          </div>
+          <div style="font-size:0.72rem; color:#854d0e; text-align:center; margin-top:6px;">
+            💡 通勤や立ち仕事メインの日（約8,000歩）は中間（約 ${normalTdee} kcal）が運動量に応じた維持目安となります
           </div>
         </div>
 
@@ -1159,7 +1164,7 @@ function runAnalysis() {
         roadmapCard.style.display = 'block';
       }
 
-      // 3. 目標別カード（リアル日付併記）
+      // 3. 目標別カード（リアル日付併記 & 各目標ごとの個別カロリーレンジ表示）
       if (compareTargetCard && compareTargetWrapper) {
         document.getElementById('compare-target-title').innerText = '🎯 体型目標別の減量シミュレーション比較';
         let cardsHtml = '';
@@ -1401,8 +1406,8 @@ function runAnalysis() {
         <div class="calorie-title">🎒 成長期・推奨エネルギー必要量レンジ</div>
         <div class="range-bar-container">
           <div class="range-bar-header">
-            <span>座学・文化部・室内中心</span>
-            <span>外遊び・体育・部活動活発</span>
+            <span>座学・文化部・室内中心 (活動1.2)</span>
+            <span>外遊び・体育・部活動活発 (活動1.75)</span>
           </div>
           <div class="range-bar-track">
             <div class="range-bar-fill" style="width: 100%;"></div>
@@ -1410,6 +1415,9 @@ function runAnalysis() {
           <div class="range-values">
             <span>必要量: ${minChildCal} kcal</span>
             <span>必要量: ${maxChildCal} kcal</span>
+          </div>
+          <div style="font-size:0.72rem; color:#854d0e; text-align:center; margin-top:6px;">
+            💡 成長期のお子様の運動量に応じた必要エネルギーの目安範囲です
           </div>
         </div>
         <div style="font-size: 0.78rem; color: #1e40af; text-align:center; margin-top:4px;">
