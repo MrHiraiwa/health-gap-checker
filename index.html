@@ -818,7 +818,7 @@
 
 <script>
 let currentMode = 'adult'; 
-const STORAGE_KEY = 'kenshin_pal_storage_v29';
+const STORAGE_KEY = 'kenshin_pal_storage_v32';
 let weightChartInstance = null;
 
 const fields = [
@@ -839,7 +839,7 @@ function formatDate(date) {
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    let raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('kenshin_pal_storage_v28');
+    let raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('kenshin_pal_storage_v31');
     const saved = JSON.parse(raw || '{}');
     
     fields.forEach(id => {
@@ -1058,7 +1058,6 @@ function runAnalysis() {
     const chartCard = document.getElementById('chart-card');
 
     // 水分補給目標の計算ロジック
-    const totalWater = Math.round(w * 35);
     const calculatedDrinkMin = Math.round(w * 22);
     const calculatedDrinkMax = Math.round(w * 30);
     
@@ -1087,19 +1086,19 @@ function runAnalysis() {
         t.targetW = parseFloat((t.bmi * Math.pow(h / 100, 2)).toFixed(1));
         t.diff = parseFloat((w - t.targetW).toFixed(1));
         
-        // 目標体重時点での基礎代謝および運動量別の維持・減量カロリーを個別に正確に算出
         t.targetBmr = Math.round((10 * t.targetW) + (6.25 * h) - (5 * calcAge) + (gender === 'male' ? 5 : -161));
         const targetTdeeMin = Math.round(t.targetBmr * 1.2);
         const targetTdeeMax = Math.round(t.targetBmr * 1.75);
         
-        // 各目標体重を維持・達成するための適切なカロリー幅（基礎代謝割れを防ぐガード付き）
         const dietMin = Math.max(t.targetBmr, Math.round(targetTdeeMin));
         const dietMax = Math.max(t.targetBmr, Math.round(targetTdeeMax));
         t.dietCalRange = `${dietMin}〜${dietMax}`;
 
-        if (t.diff > 0) {
+        if (t.diff !== 0) {
           const normalTargetTdee = Math.round(t.targetBmr * 1.5);
-          t.days = Math.round((t.diff * 7200) / (normalTdee - (normalTargetTdee - 300) || 150));
+          const absDiff = Math.abs(t.diff);
+          const calGap = Math.abs(normalTdee - normalTargetTdee) || 150;
+          t.days = Math.round((absDiff * 7200) / calGap);
           t.months = (t.days / 30.4).toFixed(1);
 
           const targetD = new Date(now.getTime());
@@ -1118,7 +1117,7 @@ function runAnalysis() {
       const cCal = Math.max(0, currentBmr - pCal - fCal);
       const cGrams = Math.round(cCal / 4);
 
-      // 1. カロリー表示（日常平均値カード ＆ 歩数レンジを追加）
+      // 1. カロリー表示
       calCard.innerHTML = `
         <div class="calorie-title">🔥 1日のカロリー設計（日常平均 ＆ 活動量レンジ）</div>
         
@@ -1157,11 +1156,15 @@ function runAnalysis() {
       calCard.style.display = 'block';
 
       // 2. ロードマップ（リアル日付表示）
-      if (roadmapCard && stdTarget.diff > 0) {
+      if (roadmapCard && stdTarget.diff !== 0) {
+        const diffTextStr = stdTarget.diff > 0 
+          ? `差分 -${stdTarget.diff}kg` 
+          : `差分 +${Math.abs(stdTarget.diff)}kg (適正体重へ増量)`;
+          
         roadmapCard.innerHTML = `
           <div class="roadmap-title">📅 標準目標達成までのロードマップ（リアル日程目安）</div>
           <div style="font-size: 0.9rem; color: #14532d; line-height: 1.6;">
-            標準体型（${stdTarget.targetW}kg / 差分 -${stdTarget.diff}kg）を目指す場合、<br>
+            標準体型（${stdTarget.targetW}kg / ${diffTextStr}）を目指す場合、<br>
             あと <span class="roadmap-highlight">約 ${stdTarget.months} ヶ月（約 ${stdTarget.days} 日）</span>、
             <span class="roadmap-highlight">【 ${stdTarget.targetDateStr} 頃 】</span>の達成が目安となります✨
           </div>
@@ -1169,21 +1172,21 @@ function runAnalysis() {
         roadmapCard.style.display = 'block';
       }
 
-      // 3. 目標別カード（リアル日付併記 & 各目標ごとの個別カロリーレンジ表示）
+      // 3. 目標別カード（リアル日付併記）
       if (compareTargetCard && compareTargetWrapper) {
-        document.getElementById('compare-target-title').innerText = '🎯 体型目標別の減量シミュレーション比較';
+        document.getElementById('compare-target-title').innerText = '🎯 体型目標別の減量・増量シミュレーション比較';
         let cardsHtml = '';
         targets.forEach(t => {
           let diffText = '';
           if (t.diff > 0) {
             diffText = `<span style="color:#be185d;">あと -${t.diff} kg</span>`;
           } else if (t.diff < 0) {
-            diffText = `<span style="color:#2563eb;">標準より -${Math.abs(t.diff)} kg (やせ)</span>`;
+            diffText = `<span style="color:#2563eb;">あと +${Math.abs(t.diff)} kg (増量)</span>`;
           } else {
             diffText = `<span style="color:#15803d;">目標達成 🎉</span>`;
           }
 
-          const periodText = t.diff > 0 ? `${t.targetDateStr} (${t.days}日後)` : `-`;
+          const periodText = t.diff !== 0 ? `${t.targetDateStr} (${t.days}日後)` : `-`;
 
           cardsHtml += `
             <div class="target-card-item ${t.typeClass}">
@@ -1202,9 +1205,9 @@ function runAnalysis() {
         compareTargetCard.style.display = 'block';
       }
 
-      // 4. Chart.js グラフ（成人・自宅用指数減衰グラフ）
+      // 4. Chart.js グラフ
       const ctx = document.getElementById('weightChart');
-      if (chartCard && ctx && typeof Chart !== 'undefined' && w > targets[2].targetW) {
+      if (chartCard && ctx && typeof Chart !== 'undefined') {
         chartCard.style.display = 'block';
         const maxDays = Math.max(60, targets[1].days || 90);
         const steps = 10;
@@ -1218,9 +1221,9 @@ function runAnalysis() {
           labels.push(`${day}日目 (${formatDate(ptDate)})`);
 
           const calcPoint = (targetW, days) => {
-            if (days <= 0 || w <= targetW) return targetW;
+            if (days <= 0 || w === targetW) return targetW;
             const k = 3.5 / days;
-            return parseFloat(Math.max(targetW, targetW + (w - targetW) * Math.exp(-k * day)).toFixed(1));
+            return parseFloat((targetW + (w - targetW) * Math.exp(-k * day)).toFixed(1));
           };
           dataStd.push(calcPoint(targets[0].targetW, targets[0].days));
           dataBeauty.push(calcPoint(targets[1].targetW, targets[1].days));
@@ -1250,14 +1253,27 @@ function runAnalysis() {
         });
       }
 
-      rawLines.push(`・減量推奨カロリー: ${stdTarget.dietCalRange} kcal/日`);
+      rawLines.push(`・減量・維持推奨カロリー: ${stdTarget.dietCalRange} kcal/日`);
       rawLines.push(`・PFCバランス目安: P ${pGrams}g / F ${fGrams}g / C ${cGrams}g`);
+
+      let bodyBadge = 'gap-achieved';
+      let bodyBadgeTxt = '標準達成 🎯';
+      if (targets[0].diff > 0) {
+        bodyBadge = 'gap-warning';
+        bodyBadgeTxt = `標準まで -${targets[0].diff}kg`;
+      } else if (targets[0].diff < -5) {
+        bodyBadge = 'gap-alert';
+        bodyBadgeTxt = 'やせすぎ注意 ⚠️';
+      } else if (targets[0].diff < 0) {
+        bodyBadge = 'gap-warning';
+        bodyBadgeTxt = `標準まで +${Math.abs(targets[0].diff)}kg`;
+      }
 
       items.push({
         name: '体型・目標体重比較',
         compare: `実測: <strong>${w} kg</strong> (BMI:${(w/Math.pow(h/100,2)).toFixed(1)}) ｜ 標準: <strong>${targets[0].targetW}kg</strong> / 美容: <strong>${targets[1].targetW}kg</strong>`,
-        badge: targets[0].diff <= 0 ? (targets[0].diff < -5 ? 'gap-alert' : 'gap-achieved') : 'gap-warning',
-        badgeText: targets[0].diff <= 0 ? (targets[0].diff < -5 ? 'やせすぎ注意 ⚠️' : '標準達成 🎯') : `標準まで -${targets[0].diff}kg`,
+        badge: bodyBadge,
+        badgeText: bodyBadgeTxt,
         tip: '運動量に合わせ、カードに表示されたカロリー範囲の中で柔軟に調整してみましょう🏃‍♂️'
       });
 
@@ -1377,19 +1393,19 @@ function runAnalysis() {
     // 🎒 未成年・学校健診モード
     // ==========================================
     } else if (currentMode === 'school') {
-      document.getElementById('chart-card-title').innerText = '📈 身長成長＆体重推移シミュレーション（成長に伴う変化）';
+      document.getElementById('chart-card-title').innerText = '📈 身長成長＆発育ゾーン推移シミュレーション（成長に伴う変化）';
       
       const laurer = (w / Math.pow(h, 3)) * 10000000;
       
-      // 年齢に応じた年間推定成長量 (cm/年)
+      // 年齢に応じた年間推定成長量 (cm/年)。18歳以上の大人が実行した場合は 0.0 cm に自動補正
       let annualGrowth = 0;
       if (!isNaN(age) && age > 0) {
         if (age < 11) annualGrowth = 4.5;       // 学童期
         else if (age <= 14) annualGrowth = 6.0;  // 思春期スパート（ピーク期）
         else if (age <= 17) annualGrowth = 1.5;  // 思春期後半（減速期）
-        else annualGrowth = 0.0;                 // 18歳以上（成長停止）
+        else annualGrowth = 0.0;                 // 18歳以上（成人・成長停止）
       } else {
-        annualGrowth = 3.0; // デフォルト値
+        annualGrowth = 3.0;
       }
 
       const laurerTargets = [
@@ -1400,6 +1416,7 @@ function runAnalysis() {
 
       laurerTargets.forEach(t => {
         t.targetW = parseFloat(((t.val * Math.pow(h, 3)) / 10000000).toFixed(1));
+        // 目標との差分（kg）
         t.diff = parseFloat((w - t.targetW).toFixed(1));
       });
 
@@ -1437,7 +1454,7 @@ function runAnalysis() {
       `;
       calCard.style.display = 'block';
 
-      // ロードマップ（1年後のリアル日付表示 & 年齢調整された身長伸び）
+      // ロードマップ
       const stdLaurerTargetW = laurerTargets[1].targetW;
       if (roadmapCard && laurer >= 160) {
         const expectedNextYearH = parseFloat((h + annualGrowth).toFixed(1));
@@ -1456,15 +1473,18 @@ function runAnalysis() {
         roadmapCard.style.display = 'block';
       }
 
+      // 🎯 発育・ローレル指数目標別の目安比較（文言の判定方向を完全修正）
       if (compareTargetCard && compareTargetWrapper) {
         document.getElementById('compare-target-title').innerText = '🎯 発育・ローレル指数目標別の目安比較';
         let cardsHtml = '';
         laurerTargets.forEach(t => {
           let diffText = '';
           if (t.diff > 0) {
-            diffText = `<span style="color:#be185d;">目安まで +${t.diff} kg</span>`;
+            // 現在の体重が目標値より重い場合（減量方向）
+            diffText = `<span style="color:#be185d;">目標まで -${t.diff} kg</span>`;
           } else if (t.diff < 0) {
-            diffText = `<span style="color:#2563eb;">標準より -${Math.abs(t.diff)} kg (やせ)</span>`;
+            // 現在の体重が目標値より軽い場合（増量方向）
+            diffText = `<span style="color:#2563eb;">目標まで +${Math.abs(t.diff)} kg (増量)</span>`;
           } else {
             diffText = `<span style="color:#15803d;">標準域 🎯</span>`;
           }
@@ -1485,14 +1505,14 @@ function runAnalysis() {
         compareTargetCard.style.display = 'block';
       }
 
-      // 未成年Chart.js（W軸：年齢適正化された成長曲線 ＋ 体重キープ曲線）
+      // 未成年Chart.js（W軸：0日目の開始体重＝現在実測体重 w を完全同期 ＋ 3発育ゾーンライン）
       const ctx = document.getElementById('weightChart');
       if (chartCard && ctx && typeof Chart !== 'undefined') {
         chartCard.style.display = 'block';
         const steps = 10;
         const maxDays = 365;
         const labels = [];
-        const dataHeight = [], dataCurrentW = [], dataStdW = [];
+        const dataHeight = [], dataCurrentW = [], dataStdW = [], dataSlimW = [];
 
         for (let i = 0; i <= steps; i++) {
           const day = Math.round((maxDays / steps) * i);
@@ -1501,16 +1521,23 @@ function runAnalysis() {
           ptDate.setDate(ptDate.getDate() + day);
           labels.push(`${Math.round(day / 30)}ヶ月後 (${formatDate(ptDate)})`);
 
-          // 年齢モデルで適正化された身長成長
+          // 身長の成長曲線（成人の場合は伸び率0cm/年）
           const currentH = parseFloat((h + (annualGrowth * (day / 365))).toFixed(1));
-          const targetWAtDay = parseFloat(((130 * Math.pow(currentH, 3)) / 10000000).toFixed(1));
+          
+          const stdWAtDay = parseFloat(((130 * Math.pow(currentH, 3)) / 10000000).toFixed(1));
+          const slimWAtDay = parseFloat(((115 * Math.pow(currentH, 3)) / 10000000).toFixed(1));
 
           dataHeight.push(currentH);
           dataCurrentW.push(w);
-          dataStdW.push(targetWAtDay);
+          dataStdW.push(stdWAtDay);
+          dataSlimW.push(slimWAtDay);
         }
 
         if (weightChartInstance) weightChartInstance.destroy();
+
+        const allWValues = [...dataCurrentW, ...dataStdW, ...dataSlimW];
+        const minW = Math.min(...allWValues);
+        const maxW = Math.max(...allWValues);
 
         weightChartInstance = new Chart(ctx, {
           type: 'line',
@@ -1518,7 +1545,7 @@ function runAnalysis() {
             labels: labels,
             datasets: [
               {
-                label: `身長の成長予測 (${annualGrowth}cm/年)`,
+                label: annualGrowth > 0 ? `身長の成長予測 (${annualGrowth}cm/年)` : `身長 (${h}cm)`,
                 data: dataHeight,
                 borderColor: '#10b981',
                 backgroundColor: 'rgba(16, 185, 129, 0.05)',
@@ -1530,18 +1557,29 @@ function runAnalysis() {
                 label: `現在の体重キープ (${w}kg)`,
                 data: dataCurrentW,
                 borderColor: '#3b82f6',
+                borderWidth: 2,
                 borderDash: [5, 5],
                 yAxisID: 'yWeight',
                 tension: 0,
-                pointRadius: 2
+                pointRadius: 3,
+                pointBackgroundColor: '#3b82f6'
               },
               {
-                label: '成長に伴う標準体重目安 (kg)',
+                label: '標準発育目安 (指数130 / kg)',
                 data: dataStdW,
                 borderColor: '#f59e0b',
                 yAxisID: 'yWeight',
                 tension: 0.2,
                 pointRadius: 3
+              },
+              {
+                label: 'スッキリ目安 (指数115 / kg)',
+                data: dataSlimW,
+                borderColor: '#06b6d4',
+                borderDash: [2, 2],
+                yAxisID: 'yWeight',
+                tension: 0.2,
+                pointRadius: 2
               }
             ]
           },
@@ -1554,16 +1592,16 @@ function runAnalysis() {
                 type: 'linear',
                 position: 'left',
                 title: { display: true, text: '体重 (kg)' },
-                suggestedMin: Math.min(w, dataStdW[0]) - 3,
-                suggestedMax: Math.max(w, dataStdW[steps]) + 3
+                suggestedMin: Math.floor(minW - 3),
+                suggestedMax: Math.ceil(maxW + 3)
               },
               yHeight: {
                 type: 'linear',
                 position: 'right',
                 title: { display: true, text: '身長 (cm)' },
                 grid: { drawOnChartArea: false },
-                suggestedMin: h - 2,
-                suggestedMax: h + Math.max(3, annualGrowth + 2)
+                suggestedMin: Math.floor(h - 2),
+                suggestedMax: Math.ceil(h + Math.max(3, annualGrowth + 2))
               }
             },
             plugins: {
@@ -1582,7 +1620,7 @@ function runAnalysis() {
       else if (laurer >= 190) { laurerEval = '肥満傾向'; laurerBadge = 'gap-alert'; laurerBadgeTxt = '要生活改善'; }
 
       items.push({
-        name: 'ローレル指数 (成長期体型)',
+        name: 'ローレル指数 (発育・体型評価)',
         compare: `実測: <strong>${laurer.toFixed(1)}</strong>【${laurerEval}】 (標準目安: 130 / 目安体重:${stdLaurerTargetW}kg)`,
         badge: laurerBadge,
         badgeText: laurerBadgeTxt,
