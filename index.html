@@ -575,7 +575,7 @@
 
     <!-- 身体測定 -->
     <fieldset id="section-body">
-      <legend>⚖️ 1. 身体測定</legend>
+      <legend>秤 1. 身体測定</legend>
       <div class="grid">
         <div class="field">
           <label for="height">身長 (cm) <span style="color:#ef4444;">*</span></label>
@@ -818,7 +818,7 @@
 
 <script>
 let currentMode = 'adult'; 
-const STORAGE_KEY = 'kenshin_pal_storage_v32';
+const STORAGE_KEY = 'kenshin_pal_storage_v33';
 let weightChartInstance = null;
 
 const fields = [
@@ -839,7 +839,7 @@ function formatDate(date) {
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    let raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('kenshin_pal_storage_v31');
+    let raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('kenshin_pal_storage_v32');
     const saved = JSON.parse(raw || '{}');
     
     fields.forEach(id => {
@@ -1397,7 +1397,6 @@ function runAnalysis() {
       
       const laurer = (w / Math.pow(h, 3)) * 10000000;
       
-      // 年齢に応じた年間推定成長量 (cm/年)。18歳以上の大人が実行した場合は 0.0 cm に自動補正
       let annualGrowth = 0;
       if (!isNaN(age) && age > 0) {
         if (age < 11) annualGrowth = 4.5;       // 学童期
@@ -1416,7 +1415,6 @@ function runAnalysis() {
 
       laurerTargets.forEach(t => {
         t.targetW = parseFloat(((t.val * Math.pow(h, 3)) / 10000000).toFixed(1));
-        // 目標との差分（kg）
         t.diff = parseFloat((w - t.targetW).toFixed(1));
       });
 
@@ -1473,17 +1471,15 @@ function runAnalysis() {
         roadmapCard.style.display = 'block';
       }
 
-      // 🎯 発育・ローレル指数目標別の目安比較（文言の判定方向を完全修正）
+      // 🎯 発育・ローレル指数目標別の目安比較
       if (compareTargetCard && compareTargetWrapper) {
         document.getElementById('compare-target-title').innerText = '🎯 発育・ローレル指数目標別の目安比較';
         let cardsHtml = '';
         laurerTargets.forEach(t => {
           let diffText = '';
           if (t.diff > 0) {
-            // 現在の体重が目標値より重い場合（減量方向）
             diffText = `<span style="color:#be185d;">目標まで -${t.diff} kg</span>`;
           } else if (t.diff < 0) {
-            // 現在の体重が目標値より軽い場合（増量方向）
             diffText = `<span style="color:#2563eb;">目標まで +${Math.abs(t.diff)} kg (増量)</span>`;
           } else {
             diffText = `<span style="color:#15803d;">標準域 🎯</span>`;
@@ -1505,7 +1501,7 @@ function runAnalysis() {
         compareTargetCard.style.display = 'block';
       }
 
-      // 未成年Chart.js（W軸：0日目の開始体重＝現在実測体重 w を完全同期 ＋ 3発育ゾーンライン）
+      // 未成年Chart.js（0ヶ月目は必ず現在の実測体重 w からスタート）
       const ctx = document.getElementById('weightChart');
       if (chartCard && ctx && typeof Chart !== 'undefined') {
         chartCard.style.display = 'block';
@@ -1521,29 +1517,58 @@ function runAnalysis() {
           ptDate.setDate(ptDate.getDate() + day);
           labels.push(`${Math.round(day / 30)}ヶ月後 (${formatDate(ptDate)})`);
 
-          // 身長の成長曲線（成人の場合は伸び率0cm/年）
           const currentH = parseFloat((h + (annualGrowth * (day / 365))).toFixed(1));
           
-          const stdWAtDay = parseFloat(((130 * Math.pow(currentH, 3)) / 10000000).toFixed(1));
-          const slimWAtDay = parseFloat(((115 * Math.pow(currentH, 3)) / 10000000).toFixed(1));
+          const targetStdW = parseFloat(((130 * Math.pow(currentH, 3)) / 10000000).toFixed(1));
+          const targetSlimW = parseFloat(((115 * Math.pow(currentH, 3)) / 10000000).toFixed(1));
+
+          // 0ヶ月目は必ず「現在の実測体重 w」からスタートし、目標へ緩やかに移行する計算式
+          const calcChildPoint = (targetW) => {
+            if (day === 0) return w;
+            const k = 3.5 / 180;
+            return parseFloat((targetW + (w - targetW) * Math.exp(-k * day)).toFixed(1));
+          };
 
           dataHeight.push(currentH);
           dataCurrentW.push(w);
-          dataStdW.push(stdWAtDay);
-          dataSlimW.push(slimWAtDay);
+          dataStdW.push(calcChildPoint(targetStdW));
+          dataSlimW.push(calcChildPoint(targetSlimW));
         }
 
         if (weightChartInstance) weightChartInstance.destroy();
-
-        const allWValues = [...dataCurrentW, ...dataStdW, ...dataSlimW];
-        const minW = Math.min(...allWValues);
-        const maxW = Math.max(...allWValues);
 
         weightChartInstance = new Chart(ctx, {
           type: 'line',
           data: {
             labels: labels,
             datasets: [
+              {
+                label: `現在の体重キープ (${w}kg)`,
+                data: dataCurrentW,
+                borderColor: '#3b82f6',
+                borderDash: [5, 5],
+                yAxisID: 'yWeight',
+                tension: 0,
+                pointRadius: 2
+              },
+              {
+                label: '標準発育への推移 (指数130目標)',
+                data: dataStdW,
+                borderColor: '#f59e0b',
+                borderWidth: 2,
+                yAxisID: 'yWeight',
+                tension: 0.3,
+                pointRadius: 3
+              },
+              {
+                label: 'スッキリ体型への推移 (指数115目標)',
+                data: dataSlimW,
+                borderColor: '#06b6d4',
+                borderWidth: 2,
+                yAxisID: 'yWeight',
+                tension: 0.3,
+                pointRadius: 3
+              },
               {
                 label: annualGrowth > 0 ? `身長の成長予測 (${annualGrowth}cm/年)` : `身長 (${h}cm)`,
                 data: dataHeight,
@@ -1552,34 +1577,6 @@ function runAnalysis() {
                 yAxisID: 'yHeight',
                 tension: 0.2,
                 pointRadius: 3
-              },
-              {
-                label: `現在の体重キープ (${w}kg)`,
-                data: dataCurrentW,
-                borderColor: '#3b82f6',
-                borderWidth: 2,
-                borderDash: [5, 5],
-                yAxisID: 'yWeight',
-                tension: 0,
-                pointRadius: 3,
-                pointBackgroundColor: '#3b82f6'
-              },
-              {
-                label: '標準発育目安 (指数130 / kg)',
-                data: dataStdW,
-                borderColor: '#f59e0b',
-                yAxisID: 'yWeight',
-                tension: 0.2,
-                pointRadius: 3
-              },
-              {
-                label: 'スッキリ目安 (指数115 / kg)',
-                data: dataSlimW,
-                borderColor: '#06b6d4',
-                borderDash: [2, 2],
-                yAxisID: 'yWeight',
-                tension: 0.2,
-                pointRadius: 2
               }
             ]
           },
@@ -1592,8 +1589,8 @@ function runAnalysis() {
                 type: 'linear',
                 position: 'left',
                 title: { display: true, text: '体重 (kg)' },
-                suggestedMin: Math.floor(minW - 3),
-                suggestedMax: Math.ceil(maxW + 3)
+                suggestedMin: Math.floor(Math.min(w, laurerTargets[0].targetW) - 3),
+                suggestedMax: Math.ceil(Math.max(w, laurerTargets[2].targetW) + 3)
               },
               yHeight: {
                 type: 'linear',
