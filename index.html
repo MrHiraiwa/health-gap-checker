@@ -818,7 +818,7 @@
 
 <script>
 let currentMode = 'adult'; 
-const STORAGE_KEY = 'kenshin_pal_storage_v28';
+const STORAGE_KEY = 'kenshin_pal_storage_v29';
 let weightChartInstance = null;
 
 const fields = [
@@ -839,7 +839,7 @@ function formatDate(date) {
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    let raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('kenshin_pal_storage_v27');
+    let raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('kenshin_pal_storage_v28');
     const saved = JSON.parse(raw || '{}');
     
     fields.forEach(id => {
@@ -1118,23 +1118,28 @@ function runAnalysis() {
       const cCal = Math.max(0, currentBmr - pCal - fCal);
       const cGrams = Math.round(cCal / 4);
 
-      // 1. カロリー表示（1日の歩数・生活強度の目安注記を追加）
+      // 1. カロリー表示（日常平均値カード ＆ 歩数レンジを追加）
       calCard.innerHTML = `
-        <div class="calorie-title">🔥 1日のカロリー設計（生活活動量 1.2 〜 1.75 レンジ）</div>
+        <div class="calorie-title">🔥 1日のカロリー設計（日常平均 ＆ 活動量レンジ）</div>
+        
+        <div style="background: #ffffff; border: 2px solid #f59e0b; border-radius: 12px; padding: 12px; text-align: center; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(245, 158, 11, 0.12);">
+          <div style="font-size: 0.78rem; color: #713f12; font-weight: bold;">🎯 日常生活の標準目標値 (活動レベル1.5 / 約8,000歩)</div>
+          <div style="font-size: 1.6rem; font-weight: bold; color: #b45309; margin: 2px 0;">${normalTdee} <span style="font-size: 0.9rem;">kcal / 日</span></div>
+          <div style="font-size: 0.72rem; color: #64748b;">※通常の通勤・お買い物・立ち仕事などを行う日の基本基準です</div>
+        </div>
+
         <div class="range-bar-container">
           <div class="range-bar-header">
-            <span>🛋️ デスクワーク中心の日 (〜5,000歩)</span>
-            <span>🏃‍♂️ 外出・運動が多い日 (10,000歩以上)</span>
+            <span>🛋️ デスクワーク中心 (〜5,000歩)</span>
+            <span>🏃‍♂️ 外出・運動が多い (10,000歩以上)</span>
           </div>
           <div class="range-bar-track">
             <div class="range-bar-fill" style="width: 100%;"></div>
           </div>
           <div class="range-values">
-            <span>維持: ${minTdee} kcal</span>
-            <span>維持: ${maxTdee} kcal</span>
-          </div>
-          <div style="font-size:0.72rem; color:#854d0e; text-align:center; margin-top:6px;">
-            💡 通勤や立ち仕事メインの日（約8,000歩）は中間（約 ${normalTdee} kcal）が運動量に応じた維持目安となります
+            <span>下限: ${minTdee} kcal</span>
+            <span style="color: #b45309;">平均: ${normalTdee} kcal</span>
+            <span>上限: ${maxTdee} kcal</span>
           </div>
         </div>
 
@@ -1400,10 +1405,18 @@ function runAnalysis() {
 
       const bmrChild = Math.round((10 * w) + (6.25 * h) - (5 * calcAge) + (gender === 'male' ? 5 : -161));
       const minChildCal = Math.round(bmrChild * 1.2);
+      const normalChildCal = Math.round(bmrChild * 1.5);
       const maxChildCal = Math.round(bmrChild * 1.75);
 
       calCard.innerHTML = `
         <div class="calorie-title">🎒 成長期・推奨エネルギー必要量レンジ</div>
+        
+        <div style="background: #ffffff; border: 2px solid #3b82f6; border-radius: 12px; padding: 12px; text-align: center; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(59, 130, 246, 0.12);">
+          <div style="font-size: 0.78rem; color: #1e40af; font-weight: bold;">🎯 成長期の平均必要エネルギー (活動レベル1.5)</div>
+          <div style="font-size: 1.6rem; font-weight: bold; color: #1d4ed8; margin: 2px 0;">${normalChildCal} <span style="font-size: 0.9rem;">kcal / 日</span></div>
+          <div style="font-size: 0.72rem; color: #64748b;">※通学や体育・軽めの運動を行うお子様の標準目安です</div>
+        </div>
+
         <div class="range-bar-container">
           <div class="range-bar-header">
             <span>座学・文化部・室内中心 (活動1.2)</span>
@@ -1413,11 +1426,9 @@ function runAnalysis() {
             <div class="range-bar-fill" style="width: 100%;"></div>
           </div>
           <div class="range-values">
-            <span>必要量: ${minChildCal} kcal</span>
-            <span>必要量: ${maxChildCal} kcal</span>
-          </div>
-          <div style="font-size:0.72rem; color:#854d0e; text-align:center; margin-top:6px;">
-            💡 成長期のお子様の運動量に応じた必要エネルギーの目安範囲です
+            <span>下限: ${minChildCal} kcal</span>
+            <span style="color: #1d4ed8;">平均: ${normalChildCal} kcal</span>
+            <span>上限: ${maxChildCal} kcal</span>
           </div>
         </div>
         <div style="font-size: 0.78rem; color: #1e40af; text-align:center; margin-top:4px;">
